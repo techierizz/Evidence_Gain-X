@@ -30,7 +30,7 @@ def run_demo():
     print(f" Prediction Margin (Top 1 vs Top 2): {results['margin'][0].item():.4f}")
     print("-" * 40)
     
-    print("\n💡 Note: High entropy means the model is uncertain and requires the next module (Counterfactual Planner) to ask for more evidence!")
+    print("\n Note: High entropy means the model is uncertain and requires the next module (Counterfactual Planner) to ask for more evidence!")
 
 if __name__ == "__main__":
     run_demo()
