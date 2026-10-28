@@ -1,6 +1,6 @@
 from src.diagnosis.hypotheses import CompetingHypothesisTracker, HypothesisRecord
 from src.diagnosis.confusion import DiseaseConfusionAnalyzer
-from src.diagnosis.updater import MultimodalDiagnosisUpdater, RuleBasedBeliefUpdater
+from src.diagnosis.updater import MultimodalDiagnosisUpdater, CalibratedBeliefUpdater, RuleBasedBeliefUpdater
 from src.diagnosis.pipeline import EvidenceGainXPipeline
 
 __all__ = [
@@ -8,6 +8,8 @@ __all__ = [
     "HypothesisRecord",
     "DiseaseConfusionAnalyzer",
     "MultimodalDiagnosisUpdater",
+    "CalibratedBeliefUpdater",
     "RuleBasedBeliefUpdater",
     "EvidenceGainXPipeline"
 ]
+

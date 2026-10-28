@@ -25,17 +25,31 @@ class UtilityScoringNetwork(nn.Module):
         return self.net(x).squeeze(-1) # (B,)
 
 class EvidenceGainSelector:
+    """
+    Phase 3: Learned Evidence Utility Network.
+    Trained to predict empirical information gain targets directly from
+    the current diagnostic uncertainty state and candidate observation type.
+    """
     def __init__(
         self,
         candidate_types: List[str],
-        state_dim: int = 24,
+        state_dim: int = 8,
         hidden_dim: int = 64,
         device: str = "cpu"
     ):
         self.candidate_types = candidate_types
         self.cand_to_idx = {c: i for i, c in enumerate(candidate_types)}
+        self.state_dim = state_dim
         self.device = device
         self.model = UtilityScoringNetwork(state_dim, len(candidate_types), hidden_dim).to(device)
+
+    def _prepare_state_tensor(self, state_repr: np.ndarray) -> torch.Tensor:
+        arr = np.array(state_repr, dtype=np.float32).flatten()
+        if len(arr) < self.state_dim:
+            arr = np.pad(arr, (0, self.state_dim - len(arr)))
+        elif len(arr) > self.state_dim:
+            arr = arr[:self.state_dim]
+        return torch.tensor(arr, dtype=torch.float32, device=self.device).unsqueeze(0)
 
     def predict_utility(
         self,
@@ -44,10 +58,50 @@ class EvidenceGainSelector:
     ) -> float:
         self.model.eval()
         with torch.no_grad():
-            s_t = torch.tensor(state_repr, dtype=torch.float32, device=self.device).unsqueeze(0)
-            c_idx = torch.tensor([self.cand_to_idx[candidate]], dtype=torch.long, device=self.device)
+            s_t = self._prepare_state_tensor(state_repr)
+            c_idx = torch.tensor([self.cand_to_idx.get(candidate, 0)], dtype=torch.long, device=self.device)
             score = self.model(s_t, c_idx)
             return float(score.item())
+
+    def fit(
+        self,
+        training_records: List[Dict[str, Any]],
+        epochs: int = 25,
+        lr: float = 1e-3
+    ) -> float:
+        """
+        Phase 3: Train selector as regression network on empirical utility targets.
+        """
+        if not training_records:
+            return 0.0
+
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
+        criterion = nn.MSELoss()
+        self.model.train()
+
+        states_list = []
+        cands_list = []
+        targets_list = []
+
+        for rec in training_records:
+            states_list.append(self._prepare_state_tensor(rec["state"]).squeeze(0))
+            cands_list.append(self.cand_to_idx.get(rec["candidate"], 0))
+            targets_list.append(float(rec["target_utility"]))
+
+        states_t = torch.stack(states_list).to(self.device)
+        cands_t = torch.tensor(cands_list, dtype=torch.long, device=self.device)
+        targets_t = torch.tensor(targets_list, dtype=torch.float32, device=self.device)
+
+        final_loss = 0.0
+        for _ in range(epochs):
+            optimizer.zero_grad()
+            preds = self.model(states_t, cands_t)
+            loss = criterion(preds, targets_t)
+            loss.backward()
+            optimizer.step()
+            final_loss = float(loss.item())
+
+        return final_loss
 
 class EvidenceGainXPolicy(BaseAcquisitionPolicy):
     def __init__(

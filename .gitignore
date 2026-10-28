@@ -1,4 +1,4 @@
-﻿# Virtual environment
+# Virtual environment
 .venv/
 venv/
 ENV/
@@ -19,9 +19,10 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Large model checkpoints
+# Large model checkpoints & caches
 checkpoints/
 *.pt
 *.pth
 *.bin
 *.onnx
+data/plantvillage_cache/
