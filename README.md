@@ -145,24 +145,9 @@ EvidenceGain-X is trained and evaluated on authentic agricultural photography:
 
 ## 🔄 Complete 9-Module Architecture
 
-```mermaid
-flowchart TD
-    A["Initial Crop Image (X₀)"] --> M1["Module 1: Vision Backbone Encoder"]
-    M1 --> M2["Module 2: Calibrated Provisional Diagnosis"]
-    M2 --> D{"Ambiguity Detected? (H > 0.35 bits)"}
-    D -- "NO: Confident" --> END["Final Verified Diagnosis"]
-    D -- "YES: Conflict" --> M3["Module 3: Disease-Confusion Analysis"]
-    M3 --> M4["Module 4: Candidate Evidence Generator"]
-    M4 --> M5["Module 5: Counterfactual Evidence Planning"]
-    M5 --> M6["Module 6: Multi-Factor Utility Scoring U(e)"]
-    M6 --> SEL["Recommend Next-Best Evidence (e*)"]
-    SEL --> ACQ["User / Field Acquires Evidence"]
-    ACQ --> M7["Module 7: Reliability Gating"]
-    M7 -- "Blurry / Dark" --> REJ["Block & Discard (Preserve Diagnosis)"]
-    M7 -- "Sharp Focus" --> M8["Module 8: Contradiction Verification"]
-    M8 --> M9["Module 9: Bayesian Belief Updater"]
-    M9 --> D
-```
+<p align="center">
+  <img src="results/figures/architecture_flowchart.png" alt="EvidenceGain-X Complete 9-Module Architecture Flowchart" width="100%" />
+</p>
 
 | Module | Name | Purpose in Plain English |
 | :--- | :--- | :--- |
