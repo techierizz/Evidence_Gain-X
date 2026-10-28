@@ -251,7 +251,7 @@ This project is licensed under the MIT License. If you use EvidenceGain-X in you
 ```bibtex
 @article{evidencegainx2026,
   title={EvidenceGain-X: Counterfactual, Self-Verifying Next-Best Evidence Acquisition for Crop Disease Diagnosis},
-  author={Kumar Sanib},
+  author={Amrit Raj},
   year={2026}
 }
 ```
