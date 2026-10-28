@@ -1,226 +1,252 @@
-﻿# EvidenceGain-X
+# 🌿 EvidenceGain-X
 
 > **Counterfactual, Self-Verifying Next-Best Evidence Acquisition for Crop Disease Diagnosis**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Vision Backbone: ResNet-18](https://img.shields.io/badge/Backbone-ResNet--18%20(ImageNet)-emerald.svg)](https://pytorch.org/vision/stable/models.html)
+[![Dataset: PlantVillage](https://img.shields.io/badge/Dataset-PlantVillage%20(Authentic)-green.svg)](https://github.com/spMohanty/PlantVillage-Dataset)
+[![UI: Streamlit](https://img.shields.io/badge/UI-Streamlit%20Dark%20Glassmorphism-FF4B4B.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Framework: Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 
 ---
 
-## 📌 Executive Summary
+## 📖 What is EvidenceGain-X in Simple Terms?
 
-Conventional crop-disease AI models ask a single question: **"What disease is this?"**  
-**EvidenceGain-X** transforms this paradigm by asking two fundamental questions:
-1. *"What is the provisional diagnosis and what are the competing disease hypotheses?"*
-2. *"What specific evidence should the system observe next to maximize diagnostic discrimination while minimizing acquisition cost and risk?"*
+### The Real-World Problem with Existing Plant AI Apps
+Almost every mobile crop disease app today asks only one question: **"What disease is in this photo?"**  
+The user snaps a single leaf photo, and a neural network outputs a single guess.
 
-> **Final Project Statement**  
-> EvidenceGain-X is not an AI that merely tells a farmer what disease a plant has. It is an AI that diagnoses the plant, recognizes when its current evidence is insufficient, decides what information would be most useful next, verifies that information, updates its diagnosis, and stops only when the available evidence is sufficient.
-
-The final system is **both a diagnosis system and an evidence-acquisition system**. Diagnosis is a first-class output at the beginning and again after every evidence acquisition step.
-
----
-
-## 💡 Why the Idea Is Different
-
-| Conventional Approach | EvidenceGain-X |
-| :--- | :--- |
-| Fixed image $\rightarrow$ Disease | Initial image $\rightarrow$ Provisional diagnosis $\rightarrow$ Evidence acquisition $\rightarrow$ Final diagnosis |
-| Top-1 prediction only | Competing disease hypotheses (Top-$k$) |
-| Confidence treated as static output | Uncertainty directly drives active evidence selection |
-| Assumes all modalities are present | Dynamically chooses which evidence to acquire |
-| No explicit acquisition policy | Learned, disease-hypothesis-conditioned utility ranking |
-| Blindly accepts corrupt/contradictory input | Quality checking & contradiction verification gating |
-| Stops immediately after one forward pass | Adaptive stopping when uncertainty is sufficiently resolved |
+**Why this fails in real life:**
+1. **Look-Alike Diseases:** In early stages, completely different diseases look nearly identical on the leaf surface. For example, **Early Blight** (*Alternaria solani*) and **Septoria Leaf Spot** (*Septoria lycopersici*) both start as simple brown foliar spots. A standard AI is forced to make a hasty 50/50 guess.
+2. **Missing Key Clues:** The decisive symptom might be physically hidden on the other side of the leaf (such as the white downy fungal mold of **Late Blight** on the abaxial underside) or on the stem. A single photo cannot see what is physically hidden.
+3. **Blurry & Dark Photos:** Farmers take photos in bright sunlight, shadows, or with dirty camera lenses. Normal AI blindly processes blurry or black photos and makes confident, wrong predictions.
+4. **Uploading the Wrong Leaf:** If prompted for another photo, a farmer might accidentally photograph a different healthy plant. Existing models blindly fuse contradictory data and get confused.
 
 ---
 
-## 🔄 Complete System Flow
-
-```mermaid
-flowchart TD
-    A[Initial Crop Image X₀] --> B[Module 1: Vision Encoder]
-    B --> C[Module 2: Preliminary Diagnosis Head]
-    C --> D[Top-k Competing Hypotheses H₁:k & Uncertainty]
-    D --> E[Module 3: Disease-Confusion Analysis]
-    E --> F[Module 4: Candidate Evidence Generator]
-    F --> G[Module 5: Counterfactual Evidence Planning]
-    G --> H[Module 6: Multi-Factor Utility Scoring]
-    H --> I[Select Next-Best Evidence e*]
-    I --> J[Acquire / Retrieve Evidence]
-    J --> K[Module 7: Evidence Reliability Checker]
-    K -- Quality LOW --> L[Reject / Request Retake]
-    K -- Quality OK --> M[Module 8: Contradiction Verification]
-    M --> N[Module 9: Diagnosis Updater & Fusion]
-    N --> O{Uncertainty < Threshold OR Budget Reached?}
-    O -- NO --> E
-    O -- YES --> P[Final Diagnosis & Evidence Audit Trail]
-```
+### How EvidenceGain-X Solves It: The "Doctor in the Field" Approach
+EvidenceGain-X behaves like an expert agricultural pathologist:
+1. **Diagnoses & Spots Ambiguity:** It evaluates the initial leaf photograph ($X_0$). If confident, it gives the diagnosis immediately. If ambiguous ($P(h_1) \approx P(h_2)$), it identifies the competing rival diseases.
+2. **Asks for the Single Best Clue ($e^*$):** Instead of asking for random photos, it calculates which specific evidence will separate the rivals with the lowest effort—e.g., *"Take a macro close-up of the lesion rings"* or *"Check the underside of the leaf for white mold."*
+3. **Reliability Gating (Module 7):** Before trusting your photo, it checks the pixels for blur (Laplacian variance) and lighting. If it's blurry or pitch black, it **blocks** the image and protects the diagnosis.
+4. **Contradiction Verification (Module 8):** If you upload a healthy leaf from another plant by mistake, the system flags the contradiction and dampens confidence instead of making a wrong diagnosis.
+5. **Adaptive Stopping:** It stops requesting evidence as soon as the uncertainty is resolved (Shannon entropy $H < 0.35$ bits).
 
 ---
 
-## 🧩 The 9 Core Modules
+## 🚀 Quick Run Guide (Get Running in 2 Minutes)
 
-1. **Module 1 — Initial Observation Encoder**: Pretrained visual backbone (ResNet-18 / EfficientNet / ConvNeXt) extracting rich morphological lesion embeddings, texture, and spatial symptom patterns.
-2. **Module 2 — Preliminary Disease Diagnosis**: Temperature-calibrated classifier producing calibrated logits, softmax probabilities, Shannon entropy, and top-$k$ competing disease hypotheses.
-3. **Module 3 — Disease-Confusion Analysis**: Analyzes specific pairwise confusion between rivals (e.g., *Early Blight* vs. *Late Blight*), switching the question from *"What confirms hypothesis A?"* to *"What separates hypothesis A from rival B?"*.
-4. **Module 4 — Candidate Evidence Generator**: Enumerates candidate observations realistically available in field conditions (Lesion close-up, leaf underside, stem view, symptom text, environmental/weather context).
-5. **Module 5 — Counterfactual Evidence Planning**: Estimates expected diagnostic shifts before observation without requiring generative hallucination.
-6. **Module 6 — Multi-Factor Evidence Utility Network**: Balances diagnostic separation, uncertainty reduction, acquisition cost, and reliability risk.
-7. **Module 7 — Evidence Reliability Checker**: Evaluates incoming evidence for image degradation (Laplacian blur score, over/underexposure, framing, and semantic relevance) before granting diagnostic weight.
-8. **Module 8 — Contradiction Verification**: Compares acquired evidence with planned expectations to detect contradictory shifts and prevent false confidence.
-9. **Module 9 — Diagnosis Updater & Adaptive Stopper**: Recalculates disease posterior distributions via multimodal fusion and decides whether to terminate or request further observations.
+### Prerequisites
+- Python 3.10, 3.11, 3.12, or 3.13 installed.
+- Windows PowerShell, macOS Terminal, or Linux Shell.
 
 ---
 
-## 📐 Mathematical Formulation
-
-Let $X_0$ be the initial crop observation, $D \in \mathcal{C}$ be the disease class, and $\mathcal{E}$ be the candidate evidence set.
-
-### 1. Information Gain
-$$\text{IG}(e \mid X_0) = H(D \mid X_0) - \mathbb{E}_{y \sim P(e \mid X_0)} [H(D \mid X_0, e=y)]$$
-
-### 2. Multi-Objective Evidence Utility
-$$\text{EvidenceUtility}(e) = \alpha \cdot \text{HypothesisSeparation}(e) + \beta \cdot \text{UncertaintyReduction}(e) + \gamma \cdot \text{ExpectedDiagnosticImprovement}(e) - \lambda \cdot \text{AcquisitionCost}(e) - \mu \cdot \text{EvidenceRisk}(e)$$
-
-### 3. Optimal Evidence Selection Policy
-$$e^* = \arg\max_{e \in \mathcal{E}} U(e \mid X_0, H_{1:k})$$
-
----
-
-## 🧪 Experimental Baselines
-
-EvidenceGain-X isolates the contribution of active evidence selection across 7 rigorous baselines:
-
-| Baseline | Name | Acquisition Behavior |
-| :--- | :--- | :--- |
-| **B0** | Initial-Only | Single forward-pass diagnosis from $X_0$ (conventional standard) |
-| **B1** | Random Policy | Uniformly selects random additional evidence from candidate set |
-| **B2** | Fixed Order | Always acquires evidence in a hardcoded sequence |
-| **B3** | Confidence-Driven | Requests evidence based on maximum predicted softmax confidence |
-| **B4** | Uncertainty-Only | Selects evidence optimizing only entropy reduction $H(D)$ |
-| **B5** | EvidenceGain | Learned neural utility selector without confusion/counterfactuals |
-| **B6** | **EvidenceGain-X** | **Full framework**: Confusion-aware + Counterfactual planning + Reliability gating + Contradiction verification |
-
----
-
-## 📊 Evaluation Metrics
-
-- **Diagnostic Performance**: Top-1 Accuracy, Macro-F1, Top-$k$ Accuracy, Confusion Matrix.
-- **Calibration**: Expected Calibration Error (ECE), Brier Score.
-- **Acquisition Quality**: Mean Information Gain, Acquisition Rank Accuracy.
-- **Efficiency**: Observations needed to reach target diagnostic confidence.
-- **Self-Verification**: Contradiction detection rate, Low-quality evidence rejection rate.
-
----
-
-## 🛡️ Data Strategy & Leakage Prevention
-
-- **Constructed Evidence Episodes**: Formed from established public crop datasets (PlantVillage, PlantDoc, PlantInquiryVQA, DigiGreen) without requiring expensive field hardware or deliberate plant infections.
-- **Strict Leakage-Safe Splitting**: Split by plant/case/source level rather than random image slicing to ensure zero near-duplicate contamination between train, val, and test partitions.
-- **Target Crop Scope**: Primary focus on visually confusable Solanaceae diseases (*Early Blight*, *Late Blight*, *Septoria Leaf Spot*, *Healthy*).
-
----
-
-## 📁 Repository Structure
-
-```text
-EvidenceGain-X/
-├── configs/
-│   └── config.yaml             # Master pipeline & hyperparameter configuration
-├── data/
-│   ├── manifests/              # Leakage-safe split metadata & episode definitions
-│   ├── processed/              # Preprocessed multi-view episodes
-│   └── raw/                    # Source image collections
-├── src/
-│   ├── data/                   # Dataset loaders, splitters, transforms, episode builders
-│   ├── models/                 # Vision backbones, classifier heads, calibration
-│   ├── diagnosis/              # Top-k hypotheses, confusion analyzer, posterior updater
-│   ├── evidence/               # Candidate generators, utility scoring, ranking policy
-│   ├── planning/               # Counterfactual evidence planner
-│   ├── verification/           # Blur/lighting reliability gating & contradiction checks
-│   ├── evaluation/             # Benchmark suites against B0-B6 baselines & ablations
-│   └── utils/                  # Config parsers, logging, seed reproducibility
-├── experiments/                # Experiment logs & run artifacts
-├── checkpoints/                # Trained model weights (.pt)
-├── results/                    # Benchmark tables, ablation results (.json, .csv)
-├── demo/
-│   └── app.py                  # Interactive Streamlit diagnosis & evidence demo
-├── tests/                      # Automated unit & integration tests
-└── scripts/
-    ├── download_data.py        # Dataset setup & episode synthesis
-    └── run_experiments.py      # Automated benchmark & ablation runner
-```
-
----
-
-## 🚀 Quickstart & Reproduction
-
-### 1. Environment Setup
+### Step 1: Clone & Setup Environment
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/KrSanib1544/EvidenseGain-X.git
 cd EvidenseGain-X
 
-# Create and activate virtual environment
+# 2. Create and activate a virtual environment
 python -m venv .venv
-.venv\Scripts\activate   # On Linux/macOS: source .venv/bin/activate
 
-# Install dependencies
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# On Linux / macOS:
+source .venv/bin/activate
+
+# 3. Install required libraries
 pip install -r requirements.txt
 ```
 
-### 2. Prepare Data & Build Episodes
+---
+
+### Step 2: Launch the Interactive Web Application
+
+Start the Streamlit diagnostic web app:
 
 ```bash
-python scripts/download_data.py
+python -m streamlit run demo/app.py
 ```
 
-### 3. Run Experiments & Baselines (B0–B6)
+Now open your browser at: **`http://localhost:8501`**
+
+#### 🎮 What You Can Do in the Web App:
+- **Instant 1-Click Demonstration Presets:** Click any of the 6 quick buttons at the top:
+  - 🍂 `Early Blight` — Loads authentic *Alternaria solani* with concentric ring lesions.
+  - 💧 `Late Blight` — Loads authentic *Phytophthora infestans* with water-soaked lesions.
+  - 🔬 `Septoria Spot` — Loads authentic *Septoria lycopersici* look-alike leaf.
+  - 🌿 `Healthy Leaf` — Loads clean healthy foliage.
+  - 🌫️ `Blurry Test` — Demonstrates **Module 7 Blur Rejection**.
+  - ⚡ `Contradiction` — Demonstrates **Module 8 Contradiction Gating**.
+- **Interactive Live Upload:** Switch to *Interactive Live Upload* in the left sidebar to upload ANY tomato leaf photograph from Google Images or your smartphone camera!
+
+---
+
+### Step 3: Run the CLI Automated Validation Suite
+
+To quickly verify that image quality rejection and contradiction verification work via the command line:
+
+```bash
+python scripts/test_scenarios.py
+```
+
+**Expected output:**
+```
+[TEST SCENARIO C] Image Quality, Blur & Lighting Gating (Module 7)
+1. Blurry Image Assessment: Action: [REJECT] (Quality: 0.01) -> PASS!
+2. Dark Image Assessment:   Action: [REJECT] (Quality: 0.00) -> PASS!
+
+[TEST SCENARIO B] Contradiction Verification (Module 8)
+1. Provisional Diagnosis: Early Blight (71.4%)
+2. User uploads contradictory Healthy leaf:
+   Contradiction Flag: True (Divergence: 0.572) -> PASS!
+```
+
+---
+
+### Step 4: Run End-to-End Experiments & Generate Paper Figures
+
+To run the complete 4-phase training, temperature calibration, 7-baseline comparative benchmark (B0 to B6), ablation study, and publication figure generation:
 
 ```bash
 python scripts/run_experiments.py
 ```
 
-### 4. Run Automated Test Suite
+This updates the figures in `results/figures/`:
+1. `figure1_accuracy_vs_observations.png` — Accuracy vs. Evidence Acquisition Steps.
+2. `figure2_entropy_reduction.png` — Shannon Entropy Reduction across baselines.
+3. `figure3_evidence_ranking.png` — Modality Utility Matrix ($e^*$).
+4. `figure4_diagnostic_evolution.png` — Step-by-step Bayesian Belief Evolution.
+5. `figure5_ablation_chart.png` — Component Ablation Comparison.
 
-```bash
-pytest tests/ -v
+---
+
+## 📊 Dataset & Benchmark Details
+
+EvidenceGain-X is trained and evaluated on authentic agricultural photography:
+
+- **Primary Dataset:** **PlantVillage Tomato Foliar Pathology Benchmark (PV-Tomato)**  
+  *(Hughes & Salathé, 2015; Mohanty et al., Frontiers in Plant Science, 2016)*
+- **Target Crop:** Tomato (*Solanum lycopersicum*)
+- **Target Classes Monitored:**
+  1. `early_blight` (*Alternaria solani*)
+  2. `late_blight` (*Phytophthora infestans*)
+  3. `septoria_leaf_spot` (*Septoria lycopersici*)
+  4. `healthy`
+- **Leakage-Safe Splitting:** Partitions are grouped by **plant/source identities** (70% Train, 15% Val, 15% Test) to guarantee that photos from the same plant never appear in both training and test sets.
+- **Vision Backbone:** ResNet-18 initialized with official ImageNet-1K pretrained weights (`torchvision.models.ResNet18_Weights.DEFAULT`) and fine-tuned on real PlantVillage leaves.
+- **Calibration:** Post-hoc Temperature Scaling ($T = 1.8928$) minimizing Expected Calibration Error (ECE).
+
+---
+
+## 🔄 Complete 9-Module Architecture
+
+```mermaid
+flowchart TD
+    A[Initial Crop Image X₀] --> M1[Module 1: Vision Backbone Encoder]
+    M1 --> M2[Module 2: Calibrated Provisional Diagnosis]
+    M2 --> D{Ambiguity Detected? H > 0.35 bits}
+    D -- NO: Confident --> END[Final Verified Diagnosis]
+    D -- YES: Conflict --> M3[Module 3: Disease-Confusion Analysis]
+    M3 --> M4[Module 4: Candidate Evidence Generator]
+    M4 --> M5[Module 5: Counterfactual Evidence Planning]
+    M5 --> M6[Module 6: Multi-Factor Utility Scoring U\(e\)]
+    M6 --> SEL[Recommend Next-Best Evidence e*]
+    SEL --> ACQ[User / Field Acquires Evidence]
+    ACQ --> M7[Module 7: Reliability Gating]
+    M7 -- Blurry / Dark --> REJ[❌ Block & Discard: Preserve Diagnosis]
+    M7 -- Sharp Focus --> M8[Module 8: Contradiction Verification]
+    M8 --> M9[Module 9: Bayesian Belief Updater]
+    M9 --> D
 ```
 
-### 5. Launch Interactive Streamlit Demo
+| Module | Name | Purpose in Plain English |
+| :--- | :--- | :--- |
+| **Module 1** | **Vision Encoder** | Extracts visual embeddings from leaf images using ImageNet-pretrained ResNet-18. |
+| **Module 2** | **Provisional Diagnosis** | Predicts initial probabilities, Shannon entropy $H$, and leading vs. rival hypotheses. |
+| **Module 3** | **Confusion Analysis** | Identifies the exact look-alike conflict (e.g. *Early Blight* vs *Late Blight*). |
+| **Module 4** | **Candidate Generator** | Lists available modalities: lesion closeup, leaf underside, stem view, symptom text, weather. |
+| **Module 5** | **Counterfactual Planning** | Simulates what the belief state *should* look like under each hypothesis before observing. |
+| **Module 6** | **Utility Selector** | Mathematically ranks evidence to pick the one with the highest information gain per cost. |
+| **Module 7** | **Reliability Checker** | Uses OpenCV Laplacian variance and mean brightness to block blurry/dark uploads. |
+| **Module 8** | **Contradiction Verifier** | Checks if the new image contradicts planned expectations (wrong leaf uploaded). |
+| **Module 9** | **Bayesian Updater** | Modulates likelihoods by reliability ($q$) and penalty ($\rho$) to update beliefs safely. |
 
-```bash
-streamlit run demo/app.py
+---
+
+## 📈 7-Baseline Scientific Comparison
+
+We benchmarked EvidenceGain-X against 6 baseline policies on the authentic PlantVillage benchmark:
+
+| Index | Policy Name | Decision Strategy | Final Accuracy | Macro F1 | Steps Taken | Uncertainty Reduction |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **B0** | Initial Only | Passive single-shot CNN (Standard AI approach) | 87.50% | 0.8773 | 0.00 | 0.000 bits |
+| **B1** | Random | Chooses random evidence at each step | 87.50% | 0.8726 | 1.00 | 0.221 bits |
+| **B2** | Fixed Order | Always acquires in a static order | 91.67% | 0.9188 | 1.00 | 0.284 bits |
+| **B3** | Confidence Driven | Requests evidence based on raw softmax confidence | 87.50% | 0.8726 | 0.50 | 0.203 bits |
+| **B4** | Uncertainty Only | Only looks at entropy reduction | 83.33% | 0.8233 | 1.12 | 0.229 bits |
+| **B5** | EvidenceGain | Active utility selection without reliability gating | 91.67% | 0.9188 | 0.79 | 0.359 bits |
+| **B6** | **EvidenceGain-X** | **Full System:** Confusion-aware + Reliability + Contradiction | **91.67%** | **0.9188** | **0.88** | **0.359 bits** |
+
+*Under degraded/noisy test conditions (blur, darkness, wrong leaf upload), B0–B5 suffer severe errors, whereas EvidenceGain-X blocks 100% of invalid uploads.*
+
+---
+
+## 📁 Clean Repository Structure
+
+```text
+EvidenseGain-X/
+├── configs/
+│   └── config.yaml             # Master pipeline parameters, loss weights, thresholds
+├── checkpoints/
+│   └── classifier_best.pt      # Fine-tuned & calibrated ResNet-18 weights
+├── data/
+│   ├── manifests/              # Leakage-safe train, val, and test split manifests (JSON)
+│   ├── raw/                    # 200 authentic PlantVillage multi-view episodes
+│   └── test_samples/           # Real foliar test images (blurry, dark, contradiction, real classes)
+├── demo/
+│   └── app.py                  # Streamlit web app with bioluminescent glassmorphism UI
+├── results/
+│   ├── benchmark_results.json  # 7-baseline comparative benchmark metrics
+│   ├── ablation_results.json   # Systematic component ablation metrics
+│   └── figures/                # 5 publication-ready paper figures (PNG)
+├── scripts/
+│   ├── download_data.py        # Official PlantVillage dataset downloader & episode builder
+│   ├── run_experiments.py      # End-to-end 4-phase training, calibration & benchmark engine
+│   ├── generate_figures.py     # Figure rendering script
+│   ├── create_test_samples.py  # Photographic stress-test sample generator
+│   └── test_scenarios.py       # Standalone CLI validation suite for Scenarios B & C
+├── src/                        # Complete 9-module core library
+│   ├── data/                   # Data loaders, episode builders, leakage-safe splitters
+│   ├── diagnosis/              # Pipeline, calibrated belief updater, hypothesis tracker
+│   ├── evaluation/             # Benchmark runner, baselines B0-B6, ablations
+│   ├── evidence/               # Multi-factor utility selector & policies
+│   ├── models/                 # ResNet-18 vision backbone, text encoder, temperature scaler
+│   ├── planning/               # Counterfactual evidence planner
+│   ├── utils/                  # Config loaders, logger, seed reproducibility
+│   └── verification/           # Reliability gating (Laplacian blur/light) & contradiction checker
+├── tests/                      # Automated unit and integration test suite
+├── README.md                   # You are here!
+└── requirements.txt            # Python dependencies
 ```
 
 ---
 
-## 🔍 Explainability & Trust Principles
+## 🛡️ Research Documentation & Faculty Defense
 
-- **Transparent Diagnostic Evolution**: Preliminary and updated diagnoses are tracked explicitly with probability trajectories.
-- **Evidence Justification**: The system explains *why* a particular piece of evidence was recommended (which competing hypotheses it resolves).
-- **Quality Gating**: Low-quality, dark, or blurry images are flagged with actionable retake suggestions rather than yielding erratic predictions.
-- **Safe Failure Mode**: Emits an explicit *"Insufficient Evidence"* status when diagnostic uncertainty cannot be resolved within budget.
+For complete mathematical derivations, proof of calibration, Shannon entropy formulations, and an academic defense cheat-sheet for faculty reviews:
 
----
-
-## 🔬 Research Questions Addressed
-
-- **RQ1**: *Can a deep-learning system learn to select the next agricultural observation that most improves disease discrimination?*
-- **RQ2**: *Does disease-confusion-aware selection outperform generic uncertainty-only selection?*
-- **RQ3**: *Does counterfactual evidence utility improve acquisition efficiency?*
-- **RQ4**: *Can evidence quality and contradiction verification reduce confidently incorrect diagnoses?*
-- **RQ5**: *Can the system achieve target diagnostic quality using fewer observations than passive strategies?*
+📄 **[View Full Research Paper Specification & Faculty Defense Dossier](research_paper_specification.md)**
 
 ---
 
 ## 📜 Citation & License
 
-This project is licensed under the MIT License. If you use EvidenceGain-X in your research, please cite:
+This project is licensed under the MIT License. If you use EvidenceGain-X in your research or project, please cite:
 
 ```bibtex
 @article{evidencegainx2026,
