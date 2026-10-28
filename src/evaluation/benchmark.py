@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
 import json
 import numpy as np
@@ -14,9 +14,10 @@ from src.evidence.policies import (
     RandomPolicy,
     FixedOrderPolicy,
     ConfidenceDrivenPolicy,
-    UncertaintyOnlyPolicy
+    UncertaintyOnlyPolicy,
+    EvidenceGainPolicy
 )
-from src.evidence.selector import EvidenceGainXPolicy
+from src.evidence.selector import EvidenceGainXPolicy, EvidenceGainSelector
 from src.utils.logger import setup_logger
 
 @dataclass
@@ -42,7 +43,6 @@ class BenchmarkReport:
     def save_json(self, path: str) -> None:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        # Convert dataclass to dict
         data = {
             "total_episodes": self.total_episodes,
             "classes": self.classes,
@@ -58,26 +58,29 @@ class PolicyBenchmarkRunner:
         classifier: DiseaseClassifier,
         classes: List[str],
         candidate_types: List[str],
+        learned_selector: Optional[EvidenceGainSelector] = None,
         device: str = "cpu"
     ):
         self.classifier = classifier
         self.classes = classes
         self.candidate_types = candidate_types
+        self.learned_selector = learned_selector or EvidenceGainSelector(candidate_types, state_dim=8, device=device)
         self.device = device
         self.logger = setup_logger("BenchmarkRunner")
 
-        # Instantiate all standard baselines
+        # Instantiate all 7 baselines (B0 to B6) as per PDF Section 21
         self.policies: Dict[str, BaseAcquisitionPolicy] = {
             "B0_InitialOnly": InitialOnlyPolicy(),
             "B1_Random": RandomPolicy(seed=42),
             "B2_FixedOrder": FixedOrderPolicy(default_order=candidate_types),
             "B3_ConfidenceDriven": ConfidenceDrivenPolicy(conf_threshold=0.75),
             "B4_UncertaintyOnly": UncertaintyOnlyPolicy(entropy_threshold=0.50),
-            "B6_EvidenceGainX": EvidenceGainXPolicy(classes=classes, candidate_types=candidate_types)
+            "B5_EvidenceGain": EvidenceGainPolicy(selector=self.learned_selector),
+            "B6_EvidenceGainX": EvidenceGainXPolicy(classes=classes, candidate_types=candidate_types, selector=self.learned_selector)
         }
 
     def run_benchmark(self, test_episodes: List[DiagnosticEpisode]) -> BenchmarkReport:
-        self.logger.info(f"Running comprehensive policy benchmark on {len(test_episodes)} test episodes...")
+        self.logger.info(f"Running comprehensive policy benchmark on {len(test_episodes)} test episodes across 7 baselines...")
         results: Dict[str, PolicyResult] = {}
         budget_curves: Dict[str, Dict[int, float]] = {}
 
@@ -99,11 +102,27 @@ class PolicyBenchmarkRunner:
             contradictions = 0
             stopped_early = 0
 
+            # Step-by-step budget tracker (0 to 3)
+            step_correct = {b: 0 for b in range(4)}
+            step_total = len(test_episodes)
+
             for ep in test_episodes:
                 res = pipeline.run_episode(ep.initial_image_path, ep.available_candidates)
                 
                 y_true.append(ep.true_disease)
                 y_pred.append(res["final_diagnosis"])
+                
+                # Check initial accuracy (budget 0)
+                init_top_idx = int(np.argmax(res["initial_probs"]))
+                if self.classes[init_top_idx] == ep.true_disease:
+                    step_correct[0] += 1
+                
+                # Check accuracy at actual final budget
+                if res["final_diagnosis"] == ep.true_disease:
+                    steps_taken = min(3, res["total_steps_taken"])
+                    for s in range(1, 4):
+                        if s >= steps_taken:
+                            step_correct[s] += 1
                 
                 init_entropies.append(float(-np.sum(res["initial_probs"] * np.log2(res["initial_probs"] + 1e-8))))
                 final_entropies.append(res["entropy"])
@@ -123,6 +142,12 @@ class PolicyBenchmarkRunner:
             m_fin_e = float(np.mean(final_entropies))
             m_steps = float(np.mean(steps_list))
 
+            # Budget efficiency curve: accuracy at budget 0, 1, 2, 3
+            budget_curves[p_name] = {
+                b: float(step_correct[b] / step_total) if step_total > 0 else 0.0
+                for b in range(4)
+            }
+
             results[p_name] = PolicyResult(
                 policy_name=p_name,
                 accuracy=acc,
@@ -131,13 +156,13 @@ class PolicyBenchmarkRunner:
                 mean_entropy_final=m_fin_e,
                 mean_entropy_reduction=m_init_e - m_fin_e,
                 mean_steps=m_steps,
-                stopping_rate=float(stopped_early / len(test_episodes)),
+                stopping_rate=float(stopped_early / len(test_episodes)) if test_episodes else 0.0,
                 rejection_count=rejections,
                 contradiction_count=contradictions
             )
 
             self.logger.info(
-                f"[{p_name}] Accuracy: {acc:.4f} | F1: {f1:.4f} | "
+                f"[{p_name:18s}] Accuracy: {acc:.4f} | F1: {f1:.4f} | "
                 f"Avg Steps: {m_steps:.2f} | Delta_Entropy: {m_init_e - m_fin_e:.4f}"
             )
 
@@ -147,3 +172,4 @@ class PolicyBenchmarkRunner:
             results=results,
             budget_curve=budget_curves
         )
+

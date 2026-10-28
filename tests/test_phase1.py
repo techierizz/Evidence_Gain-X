@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from src.data.manifest import DatasetManifest
 from src.data.inspector import DatasetInspector

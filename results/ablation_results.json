@@ -1,32 +1,32 @@
 {
   "Full_EvidenceGainX": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.36363636363636365
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.25
   },
   "No_HypothesisSeparation (alpha=0)": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.36363636363636365
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.25
   },
   "No_UncertaintyReduction (beta=0)": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.36363636363636365
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.25
   },
   "No_DiagnosticImprovement (gamma=0)": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.36363636363636365
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.25
   },
   "No_CostPenalty (lambda=0)": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.4090909090909091
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.0
   },
   "No_RiskPenalty (mu=0)": {
-    "accuracy": 0.7272727272727273,
-    "macro_f1": 0.6666666666666666,
-    "mean_steps": 0.36363636363636365
+    "accuracy": 0.7916666666666666,
+    "macro_f1": 0.7678571428571429,
+    "mean_steps": 1.125
   }
 }

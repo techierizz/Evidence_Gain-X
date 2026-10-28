@@ -109,3 +109,50 @@ class UncertaintyOnlyPolicy(BaseAcquisitionPolicy):
             key=lambda c: self.cand_entropy_reduction_weights.get(c, 0.1)
         )
         return best_cand
+
+class EvidenceGainPolicy(BaseAcquisitionPolicy):
+    """
+    Baseline B5: Learned Evidence Utility Selector.
+    Uses the trained UtilityScoringNetwork to rank observations based on
+    learned information gain targets, without counterfactual planning
+    or contradiction self-verification.
+    """
+    def __init__(
+        self,
+        selector: Any,
+        stopping_entropy: float = 0.35,
+        stopping_margin: float = 0.70
+    ):
+        super().__init__("B5_EvidenceGain")
+        self.selector = selector
+        self.stopping_entropy = stopping_entropy
+        self.stopping_margin = stopping_margin
+
+    def select_next(
+        self,
+        diagnostic_state: Dict[str, Any],
+        available_candidates: List[str]
+    ) -> Optional[str]:
+        if not available_candidates:
+            return None
+        
+        entropy = diagnostic_state.get("entropy", 1.0)
+        margin = diagnostic_state.get("margin", 0.0)
+        if entropy <= self.stopping_entropy and margin >= self.stopping_margin:
+            return None
+
+        # Build state feature vector: [probs, entropy, margin]
+        probs_dict = diagnostic_state.get("full_distribution", {})
+        probs_vec = np.array(list(probs_dict.values()), dtype=np.float32)
+        state_repr = np.concatenate([probs_vec, [entropy, margin]])
+
+        best_cand = None
+        best_u = -1e9
+        for cand in available_candidates:
+            score = self.selector.predict_utility(state_repr, cand)
+            if score > best_u:
+                best_u = score
+                best_cand = cand
+
+        return best_cand or available_candidates[0]
+

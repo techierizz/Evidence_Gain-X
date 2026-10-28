@@ -134,4 +134,12 @@ class ClassifierTrainer:
         self.model.temperature.data.fill_(best_t)
         self.logger.info(f"Calibrated model with Temperature = {best_t:.4f}")
 
+        # Re-save checkpoint with calibrated temperature
+        Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "model_state_dict": self.model.state_dict(),
+            "val_metrics": val_eval,
+            "temperature": best_t
+        }, checkpoint_path)
+
         return {"history": history, "best_val_f1": self.best_val_f1, "calibrated_temp": best_t}

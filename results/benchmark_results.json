@@ -1,5 +1,5 @@
 {
-  "total_episodes": 22,
+  "total_episodes": 24,
   "classes": [
     "early_blight",
     "late_blight",
@@ -9,76 +9,131 @@
   "results": {
     "B0_InitialOnly": {
       "policy_name": "B0_InitialOnly",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.23943081838131713,
+      "accuracy": 0.875,
+      "macro_f1": 0.8772727272727272,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.5412225450078646,
       "mean_entropy_reduction": 0.0,
       "mean_steps": 0.0,
-      "stopping_rate": 0.6363636363636364,
+      "stopping_rate": 0.5833333333333334,
       "rejection_count": 0,
       "contradiction_count": 0
     },
     "B1_Random": {
       "policy_name": "B1_Random",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.15385686201096344,
-      "mean_entropy_reduction": 0.0855739563703537,
-      "mean_steps": 0.6363636363636364,
-      "stopping_rate": 1.0,
+      "accuracy": 0.875,
+      "macro_f1": 0.8726190476190476,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.3207054235778439,
+      "mean_entropy_reduction": 0.22051712143002072,
+      "mean_steps": 1.0,
+      "stopping_rate": 0.7916666666666666,
       "rejection_count": 0,
-      "contradiction_count": 5
+      "contradiction_count": 11
     },
     "B2_FixedOrder": {
       "policy_name": "B2_FixedOrder",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.16534403035554782,
-      "mean_entropy_reduction": 0.07408678802576932,
-      "mean_steps": 0.6818181818181818,
-      "stopping_rate": 1.0,
+      "accuracy": 0.9166666666666666,
+      "macro_f1": 0.9188311688311689,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.2577503123126614,
+      "mean_entropy_reduction": 0.2834722326952032,
+      "mean_steps": 1.0,
+      "stopping_rate": 0.7916666666666666,
       "rejection_count": 0,
-      "contradiction_count": 6
+      "contradiction_count": 11
     },
     "B3_ConfidenceDriven": {
       "policy_name": "B3_ConfidenceDriven",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.23943081838131713,
-      "mean_entropy_reduction": 0.0,
-      "mean_steps": 0.0,
-      "stopping_rate": 0.6363636363636364,
+      "accuracy": 0.875,
+      "macro_f1": 0.8726190476190476,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.33824076255162555,
+      "mean_entropy_reduction": 0.20298178245623905,
+      "mean_steps": 0.5,
+      "stopping_rate": 0.6666666666666666,
       "rejection_count": 0,
-      "contradiction_count": 0
+      "contradiction_count": 5
     },
     "B4_UncertaintyOnly": {
       "policy_name": "B4_UncertaintyOnly",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.19321350822362796,
-      "mean_entropy_reduction": 0.04621731015768918,
-      "mean_steps": 0.3181818181818182,
-      "stopping_rate": 0.6363636363636364,
+      "accuracy": 0.8333333333333334,
+      "macro_f1": 0.8232600732600732,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.31238401762675494,
+      "mean_entropy_reduction": 0.22883852738110966,
+      "mean_steps": 1.125,
+      "stopping_rate": 0.7083333333333334,
       "rejection_count": 0,
-      "contradiction_count": 0
+      "contradiction_count": 14
+    },
+    "B5_EvidenceGain": {
+      "policy_name": "B5_EvidenceGain",
+      "accuracy": 0.9166666666666666,
+      "macro_f1": 0.9188311688311689,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.18191878489839533,
+      "mean_entropy_reduction": 0.3593037601094693,
+      "mean_steps": 0.7916666666666666,
+      "stopping_rate": 0.875,
+      "rejection_count": 0,
+      "contradiction_count": 5
     },
     "B6_EvidenceGainX": {
       "policy_name": "B6_EvidenceGainX",
-      "accuracy": 0.7272727272727273,
-      "macro_f1": 0.6666666666666666,
-      "mean_entropy_initial": 0.23943081838131713,
-      "mean_entropy_final": 0.1352308365563989,
-      "mean_entropy_reduction": 0.10419998182491824,
-      "mean_steps": 0.36363636363636365,
-      "stopping_rate": 1.0,
+      "accuracy": 0.7916666666666666,
+      "macro_f1": 0.7678571428571429,
+      "mean_entropy_initial": 0.5412225450078646,
+      "mean_entropy_final": 0.41414414656658965,
+      "mean_entropy_reduction": 0.12707839844127494,
+      "mean_steps": 1.25,
+      "stopping_rate": 0.6666666666666666,
       "rejection_count": 0,
-      "contradiction_count": 0
+      "contradiction_count": 18
     }
   },
-  "budget_curve": {}
+  "budget_curve": {
+    "B0_InitialOnly": {
+      "0": 0.875,
+      "1": 0.875,
+      "2": 0.875,
+      "3": 0.875
+    },
+    "B1_Random": {
+      "0": 0.875,
+      "1": 0.625,
+      "2": 0.75,
+      "3": 0.875
+    },
+    "B2_FixedOrder": {
+      "0": 0.875,
+      "1": 0.625,
+      "2": 0.75,
+      "3": 0.9166666666666666
+    },
+    "B3_ConfidenceDriven": {
+      "0": 0.875,
+      "1": 0.7916666666666666,
+      "2": 0.8333333333333334,
+      "3": 0.875
+    },
+    "B4_UncertaintyOnly": {
+      "0": 0.875,
+      "1": 0.625,
+      "2": 0.625,
+      "3": 0.8333333333333334
+    },
+    "B5_EvidenceGain": {
+      "0": 0.875,
+      "1": 0.7083333333333334,
+      "2": 0.8333333333333334,
+      "3": 0.9166666666666666
+    },
+    "B6_EvidenceGainX": {
+      "0": 0.875,
+      "1": 0.5833333333333334,
+      "2": 0.5833333333333334,
+      "3": 0.7916666666666666
+    }
+  }
 }
