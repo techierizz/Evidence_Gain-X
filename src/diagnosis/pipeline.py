@@ -152,7 +152,8 @@ class EvidenceGainXPipeline:
             h2_idx=h2_idx,
             evidence_type=evidence_type
         )
-        expected_p = cf_plan["p_outcome_if_h1"]
+        expected_p_h1 = cf_plan["p_outcome_if_h1"]
+        expected_p_h2 = cf_plan["p_outcome_if_h2"]
 
         # 4. Tentative update to check for contradiction
         tentative_p = self.belief_updater.update_beliefs(
@@ -165,7 +166,8 @@ class EvidenceGainXPipeline:
         # 5. Contradiction Verification (Module 8)
         contra_report = self.contradiction_verifier.verify(
             prior_probs=prior_p,
-            expected_probs=expected_p,
+            expected_probs=expected_p_h1,
+            expected_probs_h2=expected_p_h2,
             observed_probs=tentative_p,
             h1_idx=h1_idx,
             h2_idx=h2_idx,
