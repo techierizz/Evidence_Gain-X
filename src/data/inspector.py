@@ -11,7 +11,7 @@ class DatasetInspector:
         total_cases = len(self.manifest.cases)
         disease_counts = Counter(c.disease for c in self.manifest.cases)
         plant_ids = set(c.plant_id for c in self.manifest.cases)
-        
+
         evidence_availability: Dict[str, int] = Counter()
         for c in self.manifest.cases:
             for ev_type in c.available_evidence.keys():
@@ -47,7 +47,7 @@ class DatasetInspector:
         plant_to_diseases: Dict[str, Set[str]] = {}
         for c in self.manifest.cases:
             plant_to_diseases.setdefault(c.plant_id, set()).add(c.disease)
-        
+
         inconsistent_plants = {
             pid: list(dis) for pid, dis in plant_to_diseases.items() if len(dis) > 1
         }

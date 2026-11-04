@@ -12,16 +12,14 @@ class DiseaseConfusionAnalyzer:
         self.classes = classes
         self.num_classes = len(classes)
         self.embed_dim = embed_dim
-        
+
         if confusion_matrix is not None:
-            # Row-normalize confusion matrix
             row_sums = confusion_matrix.sum(axis=1, keepdims=True)
             row_sums[row_sums == 0] = 1.0
             self.confusion_profile = confusion_matrix / row_sums
         else:
             self.confusion_profile = np.eye(self.num_classes)
 
-        # Build pairwise disease-conflict lookup table
         self.conflict_vectors = np.zeros((self.num_classes, self.num_classes, self.embed_dim), dtype=np.float32)
         for i in range(self.num_classes):
             for j in range(self.num_classes):
@@ -42,7 +40,7 @@ class DiseaseConfusionAnalyzer:
 
         h1 = top_hypotheses[0]
         h2 = top_hypotheses[1]
-        
+
         c_repr = self.get_conflict_representation(h1.class_idx, h2.class_idx)
         pair_confusion = float(self.confusion_profile[h1.class_idx, h2.class_idx])
 

@@ -19,17 +19,11 @@ class UtilityScoringNetwork(nn.Module):
         )
 
     def forward(self, state_tensor: torch.Tensor, cand_indices: torch.Tensor) -> torch.Tensor:
-        # state_tensor: (B, state_dim), cand_indices: (B,)
-        c_emb = self.cand_embed(cand_indices) # (B, 16)
+        c_emb = self.cand_embed(cand_indices)
         x = torch.cat([state_tensor, c_emb], dim=-1)
-        return self.net(x).squeeze(-1) # (B,)
+        return self.net(x).squeeze(-1)
 
 class EvidenceGainSelector:
-    """
-    Phase 3: Learned Evidence Utility Network.
-    Trained to predict empirical information gain targets directly from
-    the current diagnostic uncertainty state and candidate observation type.
-    """
     def __init__(
         self,
         candidate_types: List[str],
@@ -69,9 +63,6 @@ class EvidenceGainSelector:
         epochs: int = 25,
         lr: float = 1e-3
     ) -> float:
-        """
-        Phase 3: Train selector as regression network on empirical utility targets.
-        """
         if not training_records:
             return 0.0
 
@@ -122,17 +113,16 @@ class EvidenceGainXPolicy(BaseAcquisitionPolicy):
         self.candidate_types = candidate_types
         self.selector = selector
         self.planner = CounterfactualEvidencePlanner(classes, candidate_types)
-        
+
         self.alpha_sep = alpha_sep
         self.beta_unc = beta_unc
         self.gamma_diag = gamma_diag
         self.lambda_cost = lambda_cost
         self.mu_risk = mu_risk
-        
+
         self.stopping_entropy = stopping_entropy
         self.stopping_margin = stopping_margin
 
-        # Default acquisition costs and risk priors
         self.costs = {
             "symptom_text": 0.4,
             "weather_context": 0.4,
@@ -156,11 +146,10 @@ class EvidenceGainXPolicy(BaseAcquisitionPolicy):
         candidate: str
     ) -> Dict[str, float]:
         cf_plan = self.planner.simulate_counterfactual_outcomes(current_probs, h1_idx, h2_idx, candidate)
-        
+
         sep = cf_plan["hypothesis_separation"]
         unc_red = cf_plan["expected_entropy_reduction"]
-        
-        # Expected diagnostic improvement (expected increase in top probability margin)
+
         exp_diag_imp = sep * 0.5
         cost = self.costs.get(candidate, 1.0)
         risk = self.risks.get(candidate, 0.2)
@@ -191,13 +180,11 @@ class EvidenceGainXPolicy(BaseAcquisitionPolicy):
         if not available_candidates:
             return None
 
-        # Check stopping criteria
         entropy = diagnostic_state.get("entropy", 1.0)
         margin = diagnostic_state.get("margin", 0.0)
         if entropy <= self.stopping_entropy and margin >= self.stopping_margin:
-            return None # Sufficient evidence, stop
+            return None
 
-        # Competing hypotheses indices
         top_hypos = diagnostic_state.get("top_hypotheses", [])
         if len(top_hypos) >= 2:
             h1_idx = top_hypos[0].class_idx

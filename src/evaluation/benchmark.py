@@ -68,7 +68,6 @@ class PolicyBenchmarkRunner:
         self.device = device
         self.logger = setup_logger("BenchmarkRunner")
 
-        # Instantiate all 7 baselines (B0 to B6) as per PDF Section 21
         self.policies: Dict[str, BaseAcquisitionPolicy] = {
             "B0_InitialOnly": InitialOnlyPolicy(),
             "B1_Random": RandomPolicy(seed=42),
@@ -102,28 +101,25 @@ class PolicyBenchmarkRunner:
             contradictions = 0
             stopped_early = 0
 
-            # Step-by-step budget tracker (0 to 3)
             step_correct = {b: 0 for b in range(4)}
             step_total = len(test_episodes)
 
             for ep in test_episodes:
                 res = pipeline.run_episode(ep.initial_image_path, ep.available_candidates)
-                
+
                 y_true.append(ep.true_disease)
                 y_pred.append(res["final_diagnosis"])
-                
-                # Check initial accuracy (budget 0)
+
                 init_top_idx = int(np.argmax(res["initial_probs"]))
                 if self.classes[init_top_idx] == ep.true_disease:
                     step_correct[0] += 1
-                
-                # Check accuracy at actual final budget
+
                 if res["final_diagnosis"] == ep.true_disease:
                     steps_taken = min(3, res["total_steps_taken"])
                     for s in range(1, 4):
                         if s >= steps_taken:
                             step_correct[s] += 1
-                
+
                 init_entropies.append(float(-np.sum(res["initial_probs"] * np.log2(res["initial_probs"] + 1e-8))))
                 final_entropies.append(res["entropy"])
                 steps_list.append(res["total_steps_taken"])
@@ -142,7 +138,6 @@ class PolicyBenchmarkRunner:
             m_fin_e = float(np.mean(final_entropies))
             m_steps = float(np.mean(steps_list))
 
-            # Budget efficiency curve: accuracy at budget 0, 1, 2, 3
             budget_curves[p_name] = {
                 b: float(step_correct[b] / step_total) if step_total > 0 else 0.0
                 for b in range(4)

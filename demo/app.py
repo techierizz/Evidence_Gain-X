@@ -20,14 +20,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==============================================================================
-# ULTRA-PREMIUM BIOLUMINESCENT DARK GLASSMORPHISM DESIGN SYSTEM
-# ==============================================================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    /* Global Base Reset & Fonts */
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
@@ -35,7 +31,6 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
 
-    /* Main Background & Ambient Glow */
     .stApp {
         background: radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
                     radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.06) 0%, transparent 40%),
@@ -43,7 +38,6 @@ st.markdown("""
         color: #e2e8f0;
     }
 
-    /* Hero Header */
     .hero-container {
         padding: 1.8rem 2.2rem;
         background: linear-gradient(135deg, rgba(18, 30, 24, 0.85) 0%, rgba(12, 22, 17, 0.95) 100%);
@@ -105,7 +99,6 @@ st.markdown("""
         margin: 0;
     }
 
-    /* Glassmorphic Cards */
     .glass-card {
         background: linear-gradient(145deg, rgba(22, 36, 29, 0.7) 0%, rgba(15, 25, 20, 0.85) 100%);
         border: 1px solid rgba(52, 211, 153, 0.18);
@@ -125,7 +118,6 @@ st.markdown("""
         gap: 10px;
     }
 
-    /* Metric Badges & Pills */
     .stat-pill {
         display: inline-block;
         padding: 3px 10px;
@@ -156,7 +148,6 @@ st.markdown("""
         display: inline-block;
     }
 
-    /* Custom Progress Bar for Probabilities */
     .prob-bar-container {
         margin: 8px 0;
     }
@@ -179,7 +170,6 @@ st.markdown("""
         transition: width 0.5s ease-out;
     }
 
-    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
         background-color: #0d1612 !important;
         border-right: 1px solid rgba(52, 211, 153, 0.15);
@@ -191,7 +181,6 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
 
-    /* Metric Display Box */
     .kpi-box {
         text-align: center;
         padding: 0.8rem 0.5rem;
@@ -219,7 +208,6 @@ st.markdown("""
         letter-spacing: 0.05em;
     }
 
-    /* Preset Buttons in Horizontal Block */
     div[data-testid="stHorizontalBlock"] button {
         background: rgba(18, 32, 25, 0.85) !important;
         border: 1px solid rgba(52, 211, 153, 0.25) !important;
@@ -238,7 +226,6 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
     }
 
-    /* Trophy Card */
     .trophy-card {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
         border: 1px solid rgba(52, 211, 153, 0.4);
@@ -249,9 +236,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==============================================================================
-# PIPELINE & MODEL INITIALIZATION
-# ==============================================================================
 @st.cache_resource
 def load_cached_classifier(ckpt_path: str, num_classes: int, backbone: str, device: str):
     classifier = DiseaseClassifier(num_classes=num_classes, backbone_name=backbone, pretrained=False)
@@ -264,10 +248,10 @@ def load_system_pipeline():
     classes = cfg["dataset"]["classes"]
     cand_types = cfg["evidence"]["candidate_types"]
     device = "cuda" if torch.cuda.is_available() and cfg.get("device") == "cuda" else "cpu"
-    
+
     ckpt_path = "checkpoints/classifier_best.pt"
     classifier = load_cached_classifier(ckpt_path, len(classes), cfg["classifier"]["backbone"], device)
-    
+
     policy = EvidenceGainXPolicy(
         classes=classes,
         candidate_types=cand_types,
@@ -277,7 +261,7 @@ def load_system_pipeline():
         lambda_cost=cfg["selector"]["weights"]["lambda_cost"],
         mu_risk=cfg["selector"]["weights"]["mu_risk"]
     )
-    
+
     pipeline = EvidenceGainXPipeline(
         classifier=classifier,
         policy=policy,
@@ -292,12 +276,10 @@ def load_system_pipeline():
 
 cfg, pipeline, classes, cand_types = load_system_pipeline()
 
-# Load benchmark manifest
 manifest_path = "data/manifests/dataset_manifest.json"
 manifest = DatasetManifest.load_json(manifest_path) if Path(manifest_path).exists() else None
 case_dict = {c.case_id: c for c in manifest.cases} if manifest else {}
 
-# Session State Initialization
 if "current_state" not in st.session_state:
     st.session_state["current_state"] = None
 if "active_case" not in st.session_state:
@@ -311,9 +293,6 @@ if "active_image_path_or_pil" not in st.session_state:
 if "input_source_mode" not in st.session_state:
     st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
 
-# ==============================================================================
-# SIDEBAR CONTROLS & DIAGNOSTIC CONFIGURATION
-# ==============================================================================
 with st.sidebar:
     st.markdown("""
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
@@ -321,7 +300,7 @@ with st.sidebar:
             <span style="font-size: 1.25rem; font-weight: 700; color: #f1f5f9;">Control Center</span>
         </div>
     """, unsafe_allow_html=True)
-    
+
     input_mode = st.radio(
         "Inference Input Source:",
         ["Authentic Benchmark Gallery", "Interactive Live Upload"],
@@ -332,7 +311,7 @@ with st.sidebar:
 
     max_steps = st.slider("Evidence Budget Horizon ($B$):", 1, 5, cfg["evidence"]["max_budget"])
     pipeline.max_budget = max_steps
-    
+
     st.markdown("---")
     if st.button("🔄 Reset Diagnostic Episode", use_container_width=True):
         st.session_state["current_state"] = None
@@ -348,7 +327,7 @@ with st.sidebar:
             Pathological Targets Monitored
         </div>
     """, unsafe_allow_html=True)
-    
+
     disease_colors = {
         "early_blight": "#f59e0b",
         "late_blight": "#ef4444",
@@ -374,9 +353,6 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-# ==============================================================================
-# HERO HEADER & TELEMETRY BANNER
-# ==============================================================================
 st.markdown(f"""
 <div class="hero-container">
     <div class="hero-telemetry">
@@ -391,9 +367,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ==============================================================================
-# QUICK 1-CLICK DEMONSTRATION PRESETS
-# ==============================================================================
 st.markdown("""
 <div style="font-size: 0.82rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
     ⚡ Instant Demonstration Presets (Click to Auto-Load Authentic Test Cases)
@@ -452,7 +425,6 @@ with p_col4:
 
 with p_col5:
     if st.button("🌫️ Blurry Test", use_container_width=True):
-        # Scenario C: Demonstrates Module 7 Blur Rejection
         cid = "tomato_septoria_leaf_spot_0001"
         c_rec = case_dict.get(cid)
         st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
@@ -461,10 +433,8 @@ with p_col5:
         st.session_state["active_preset_name"] = "Scenario C: Heavily Blurry Leaf (Defocus Rejection)"
         init_path = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_septoria.jpg"
         st.session_state["active_image_path_or_pil"] = init_path
-        
-        # 1. Run initial diagnosis
+
         init_state = pipeline.diagnose_initial(init_path)
-        # 2. Immediately simulate acquiring a blurry lesion closeup
         blurry_item = EvidenceItem(
             evidence_type="lesion_closeup",
             modality="image",
@@ -477,7 +447,6 @@ with p_col5:
 
 with p_col6:
     if st.button("⚡ Contradiction", use_container_width=True):
-        # Scenario B: Demonstrates Module 8 Contradiction Verification
         cid = "tomato_early_blight_0001"
         c_rec = case_dict.get(cid)
         st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
@@ -486,10 +455,8 @@ with p_col6:
         st.session_state["active_preset_name"] = "Scenario B: Contradictory Input (Wrong Leaf Uploaded)"
         init_path = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_early_blight.jpg"
         st.session_state["active_image_path_or_pil"] = init_path
-        
-        # 1. Run initial diagnosis
+
         init_state = pipeline.diagnose_initial(init_path)
-        # 2. Immediately simulate user accidentally uploading a healthy leaf as lesion close-up
         contradictory_item = EvidenceItem(
             evidence_type="lesion_closeup",
             modality="image",
@@ -502,15 +469,12 @@ with p_col6:
 
 st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-# ==============================================================================
-# MAIN TWO-COLUMN WORKFLOW LAYOUT
-# ==============================================================================
 col_left, col_right = st.columns([1, 1.25], gap="large")
 
 with col_left:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown('<div class="card-header"><span>📸</span> 1. Macroscopic Foliar Observation ($X_0$)</div>', unsafe_allow_html=True)
-    
+
     if st.session_state.get("active_preset_name"):
         st.info(f"Loaded Preset: **{st.session_state['active_preset_name']}**")
 
@@ -518,8 +482,7 @@ with col_left:
 
     if curr_input_mode == "Interactive Live Upload":
         uploaded_file = st.file_uploader("Upload leaf photograph (or capture via field camera):", type=["jpg", "jpeg", "png"])
-        
-        # Quick sample links for live mode
+
         st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-top: 4px;'>Or click a web sample:</div>", unsafe_allow_html=True)
         s_c1, s_c2, s_c3 = st.columns(3)
         with s_c1:
@@ -548,8 +511,7 @@ with col_left:
             live_pil = Image.open(uploaded_file).convert("RGB")
             st.session_state["active_image_path_or_pil"] = live_pil
             st.image(live_pil, caption="Live Uploaded Specimen", use_container_width=True)
-            
-            # Real-time optical quality analysis
+
             q_check = pipeline.reliability_checker.assess_image_quality(live_pil)
             if not q_check.is_acceptable:
                 st.markdown(f'<div class="badge-reject" style="margin-top: 6px;">⚠️ Quality Warning: {", ".join(q_check.reasons)}</div>', unsafe_allow_html=True)
@@ -569,13 +531,12 @@ with col_left:
                 st.image(disp_target, caption="Active Specimen View", use_container_width=True)
 
     else:
-        # Authentic Benchmark Gallery Mode
         if manifest:
             case_ids = [c.case_id for c in manifest.cases]
             sel_default_idx = 0
             if st.session_state.get("selected_case_id") in case_ids:
                 sel_default_idx = case_ids.index(st.session_state["selected_case_id"])
-            
+
             selected_id = st.selectbox(
                 "Select PlantVillage Benchmark Case:",
                 case_ids,
@@ -590,8 +551,7 @@ with col_left:
                 initial_img = Image.open(case_record.initial_image_path)
                 st.image(initial_img, caption=f"Case ID: {case_record.case_id}", use_container_width=True)
                 st.markdown(f"**Ground Truth Disease:** <span class='stat-pill'>{case_record.disease.replace('_', ' ').title()}</span>", unsafe_allow_html=True)
-                
-                # Check optical quality of X0
+
                 q_check = pipeline.reliability_checker.assess_image_quality(case_record.initial_image_path)
                 st.markdown(f'<div class="badge-accept" style="margin-top: 6px;">✅ Sharp Focus (Laplacian: {q_check.blur_score:.1f})</div>', unsafe_allow_html=True)
 
@@ -616,13 +576,9 @@ with col_right:
         </div>
         """, unsafe_allow_html=True)
     else:
-        # ==============================================================================
-        # PRELIMINARY DIAGNOSIS & CONFLICT ANALYSIS
-        # ==============================================================================
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown('<div class="card-header"><span>🧠</span> 2. Provisional Diagnosis & Conflict Analysis</div>', unsafe_allow_html=True)
-        
-        # KPI Row
+
         k1, k2, k3 = st.columns(3)
         with k1:
             st.markdown(f"""
@@ -648,15 +604,14 @@ with col_right:
 
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-        # Belief Distribution Bars
         st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;'>Current Posterior Belief Distribution</div>", unsafe_allow_html=True)
-        
+
         for i, c_name in enumerate(classes):
             p_val = state["current_probs"][i]
             bar_color = disease_colors.get(c_name, "#10b981")
             is_lead = (c_name == state["leading_disease"])
             border_glow = f"box-shadow: 0 0 10px {bar_color}40;" if is_lead else ""
-            
+
             st.markdown(f"""
             <div class="prob-bar-container">
                 <div class="prob-bar-header">
@@ -673,10 +628,9 @@ with col_right:
             </div>
             """, unsafe_allow_html=True)
 
-        # Look-alike Conflict Analysis Box
         rival = state.get("rival_disease")
         margin = state.get("margin", 1.0)
-        
+
         if state["is_ambiguous"] and rival:
             st.markdown(f"""
             <div style="margin-top: 14px; padding: 12px 16px; background: rgba(245, 158, 11, 0.12); border-left: 4px solid #f59e0b; border-radius: 8px;">
@@ -697,9 +651,6 @@ with col_right:
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ==============================================================================
-        # NEXT-BEST EVIDENCE RECOMMENDATION (MODULES 4, 5, 6)
-        # ==============================================================================
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown('<div class="card-header"><span>🎯</span> 3. Next-Best Evidence Recommendation ($e^*$)</div>', unsafe_allow_html=True)
 
@@ -722,7 +673,7 @@ with col_right:
             h1_idx = classes.index(state["leading_disease"])
             h2_name = state["rival_disease"] or classes[(h1_idx + 1) % len(classes)]
             h2_idx = classes.index(h2_name)
-            
+
             utility_records = []
             for cand in rem_cands:
                 u_info = pipeline.policy.compute_evidence_utility(state["current_probs"], h1_idx, h2_idx, cand)
@@ -747,7 +698,6 @@ with col_right:
             </div>
             """, unsafe_allow_html=True)
 
-            # Styled Utility Table
             st.dataframe(
                 u_df[["candidate", "hypothesis_separation", "uncertainty_reduction", "cost", "total_utility"]].rename(
                     columns={
@@ -761,12 +711,10 @@ with col_right:
                 use_container_width=True
             )
 
-            # Interactive Acquisition Expander
             with st.expander(f"📥 Acquire Requested Evidence: {best_cand.replace('_', ' ').title()}", expanded=True):
                 ev_to_submit = None
                 active_case = st.session_state.get("active_case")
-                
-                # Option A: 1-Click Benchmark Evidence
+
                 if active_case and best_cand in active_case.available_evidence:
                     b_item = active_case.available_evidence[best_cand]
                     st.markdown(f"**Authentic Benchmark Clue Ready:** `{b_item.evidence_type}` ({b_item.modality})")
@@ -775,7 +723,6 @@ with col_right:
 
                 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-                # Option B: Stress-Test Quick Buttons
                 st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;'>Adversarial Stress-Testing Controls</div>", unsafe_allow_html=True)
                 sc_c1, sc_c2 = st.columns(2)
                 with sc_c1:
@@ -795,10 +742,9 @@ with col_right:
                             cost=1.0
                         )
 
-                # Option C: User Upload / Text Input
                 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
                 st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;'>Or Provide Custom Field Observation</div>", unsafe_allow_html=True)
-                
+
                 if best_cand in ["lesion_closeup", "leaf_underside", "stem_view"]:
                     live_ev_file = st.file_uploader(f"Upload {best_cand.replace('_', ' ').title()} Image:", type=["jpg", "png", "jpeg"], key=f"live_{best_cand}")
                     if live_ev_file:
@@ -829,25 +775,22 @@ with col_right:
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ==============================================================================
-# 4. SELF-VERIFYING AUDIT TRAIL & FINAL VERIFIED DIAGNOSIS
-# ==============================================================================
 if state and len(state["evidence_trail"]) > 0:
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     st.markdown("### 🛡️ 4. Self-Verifying Audit Trail & Diagnostic Trajectory")
-    
+
     col_t1, col_t2 = st.columns([1.5, 1], gap="large")
-    
+
     with col_t1:
         for item in state["evidence_trail"]:
             act = item.get("action", "ACCEPT")
             badge = f'<span class="badge-accept">ACCEPT</span>' if act == "ACCEPT" else (f'<span class="badge-reject">REJECT</span>')
-            
+
             with st.expander(f"Step {item['step']}: Acquired '{item['evidence_type'].replace('_', ' ').title()}' — Action: {act}", expanded=True):
                 st.markdown(f"**Reliability Gating:** {badge} &nbsp;|&nbsp; Quality Score: `{item['quality_score']:.2f}`", unsafe_allow_html=True)
                 if item.get("reasons"):
                     st.markdown(f"- **Quality Diagnostics:** {', '.join(item['reasons'])}")
-                
+
                 is_rejected = act in ["REJECT", "REJECTED"]
                 if is_rejected:
                     st.error("❌ **Observation Blocked & Discarded:** Image quality is unacceptable. The observation was rejected by Module 7 (Reliability Gating) and blocked from corrupting the diagnostic state. Previous beliefs were safely preserved.")
@@ -857,7 +800,7 @@ if state and len(state["evidence_trail"]) > 0:
                         st.warning(f"⚠️ **Contradiction Detected:** {item.get('contradiction_explanation')}")
                     else:
                         st.success("✅ **Observation Verified:** Observation conforms with counterfactual expectation trajectory.")
-                
+
                 st.markdown(f"**Updated Belief:** <span class='stat-pill'>{item['leading_after'].replace('_', ' ').title()}</span> ({item['leading_prob_after']*100:.1f}%) &nbsp;|&nbsp; **Entropy:** `{item['entropy_after']:.3f} bits`", unsafe_allow_html=True)
 
     with col_t2:
@@ -868,26 +811,25 @@ if state and len(state["evidence_trail"]) > 0:
             <span style="font-size: 1.2rem; font-weight: 800; color: #ffffff;">Final Verified Diagnosis</span>
         </div>
         """, unsafe_allow_html=True)
-        
+
         final_disease = state['leading_disease'].replace('_', ' ').title()
         st.markdown(f"""
         <div style="font-size: 1.6rem; font-weight: 800; color: #34d399; margin-bottom: 8px;">
             {final_disease}
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.markdown(f"**Final Confidence:** `{state['leading_prob']*100:.1f}%`")
         st.markdown(f"**Total Acquisition Steps:** `{len(state['evidence_trail'])}`")
-        
+
         init_lead_idx = int(np.argmax(state["initial_probs"]))
         init_lead_name = classes[init_lead_idx]
-        
-        # Real entropy reduction ΔH = H0 - Ht
+
         init_p = np.array(state["initial_probs"])
         h0 = float(-np.sum(init_p * np.log2(init_p + 1e-12)))
         ht = float(state["entropy"])
         delta_h = max(0.0, h0 - ht)
-        
+
         st.markdown(f"**Diagnostic Shift:** *{init_lead_name.replace('_', ' ').title()}* ➔ **{final_disease}**")
         st.markdown(f"**Initial Entropy ($H_0$):** `{h0:.3f} bits`")
         st.markdown(f"**Current Entropy ($H_t$):** `{ht:.3f} bits`")

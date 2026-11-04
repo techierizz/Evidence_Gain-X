@@ -6,7 +6,7 @@ import torch
 @dataclass
 class ContradictionReport:
     is_contradiction: bool
-    contradiction_score: float # 0.0 to 1.0 (higher = more contradictory)
+    contradiction_score: float
     expected_shift_direction: str
     observed_shift_direction: str
     penalty_factor: float
@@ -27,7 +27,6 @@ class ContradictionVerifier:
         classes: List[str],
         expected_probs_h2: Optional[np.ndarray] = None
     ) -> ContradictionReport:
-        # Directional divergence between expected update and observed update
         delta_exp_h1 = expected_probs - prior_probs
         delta_obs = observed_probs - prior_probs
 
@@ -46,12 +45,10 @@ class ContradictionVerifier:
                 cos2 = 1.0
             else:
                 cos2 = float(np.dot(delta_exp_h2, delta_obs) / (norm_exp2 * norm_obs))
-            # Observation aligns if it supports EITHER of the competing hypotheses (h1 or h2)
             best_cos = max(cos1, cos2)
         else:
             best_cos = cos1
 
-        # Contradiction score: 0 (aligned with h1 or h2) to 1 (opposes both look-alike hypotheses)
         contradiction_score = float(np.clip((1.0 - best_cos) / 2.0, 0.0, 1.0))
         is_contradiction = contradiction_score >= self.contradiction_threshold
 

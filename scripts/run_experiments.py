@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-
 from src.utils.config import load_config
 from src.utils.seed import set_seed
 from src.utils.logger import setup_logger
@@ -39,7 +38,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
     classes = cfg["dataset"]["classes"]
     cand_types = cfg["evidence"]["candidate_types"]
 
-    # 1. Leakage-safe plant-grouped splits
     train_cases, val_cases, test_cases = create_leakage_safe_splits(
         manifest=manifest,
         train_ratio=cfg["dataset"]["split_ratios"]["train"],
@@ -50,7 +48,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
     save_split_manifests(train_cases, val_cases, test_cases, manifest)
     logger.info(f"Dataset split complete: Train={len(train_cases)}, Val={len(val_cases)}, Test={len(test_cases)} cases.")
 
-    # 2. Create PyTorch datasets and loaders
     train_tf, eval_tf = get_transforms(img_size=cfg["dataset"]["img_size"])
     train_ds = CropDiseaseDataset(train_cases, classes, transform=train_tf)
     val_ds = CropDiseaseDataset(val_cases, classes, transform=eval_tf)
@@ -60,7 +57,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
     val_loader = DataLoader(val_ds, batch_size=cfg["dataset"]["batch_size"], shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=cfg["dataset"]["batch_size"], shuffle=False)
 
-    # 3. Baseline Classifier Training & Calibration (Phase 1)
     device = "cuda" if torch.cuda.is_available() and cfg.get("device") == "cuda" else "cpu"
     logger.info(f"Execution device: {device}")
 
@@ -86,8 +82,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
         )
         train_results = trainer.fit(epochs=cfg["classifier"]["epochs"], checkpoint_path=ckpt_path)
 
-
-    # 4. Phase 2: Evidence Episodes & Empirical Utility Target Construction
     logger.info("Executing Phase 2: Constructing empirical utility targets across diagnostic training episodes...")
     from src.diagnosis.pipeline import EvidenceGainXPipeline
     from src.evidence.policies import InitialOnlyPolicy
@@ -107,7 +101,7 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
         init_state = probe_pipeline.diagnose_initial(ep.initial_image_path)
         init_entropy = init_state["entropy"]
         init_leading = init_state["leading_disease"]
-        
+
         probs_vec = np.array([init_state["full_distribution"].get(c, 0.25) for c in classes], dtype=np.float32)
         state_repr = np.concatenate([probs_vec, [init_entropy, init_state["margin"]]])
 
@@ -128,12 +122,12 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
                 "evidence_trail": []
             }
             updated_state = probe_pipeline.process_single_evidence(temp_state, cand_type, ev_item)
-            
+
             ent_reduction = max(0.0, init_entropy - updated_state["entropy"])
             was_correct = (init_leading == ep.true_disease)
             is_correct = (updated_state["leading_disease"] == ep.true_disease)
             diag_bonus = 1.0 if (not was_correct and is_correct) else (0.2 if is_correct else -0.3)
-            
+
             target_utility = ent_reduction * 1.5 + diag_bonus
             utility_training_records.append({
                 "state": state_repr,
@@ -141,7 +135,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
                 "target_utility": target_utility
             })
 
-    # 5. Phase 3: Train Neural Utility Selector
     logger.info(f"Executing Phase 3: Training EvidenceGainSelector on {len(utility_training_records)} empirical targets...")
     selector = EvidenceGainSelector(
         candidate_types=cand_types,
@@ -151,7 +144,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
     loss = selector.fit(utility_training_records, epochs=cfg["selector"].get("epochs", 20))
     logger.info(f"Phase 3 complete: Neural Utility Selector trained (Final MSE Loss: {loss:.4f})")
 
-    # 6. Build Test Episodes & Phase 4: Closed-Loop Benchmarking across all 7 Baselines (B0 to B6)
     test_episodes = ep_builder.build_episodes_from_cases(test_cases)
     bench_runner = PolicyBenchmarkRunner(
         classifier=classifier,
@@ -165,7 +157,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
     bench_report.save_json(bench_report_path)
     logger.info(f"Benchmark results saved to {bench_report_path}")
 
-    # 7. Ablation Studies
     ablation_runner = AblationStudyRunner(
         classifier=classifier,
         classes=classes,
@@ -178,7 +169,6 @@ def run_all_experiments(config_path: str = "configs/config.yaml", force_retrain:
         json.dump(ablation_results, f, indent=2)
     logger.info(f"Ablation results saved to {ablation_path}")
 
-    # 8. Publication Figure Generation (Section 23)
     try:
         from scripts.generate_figures import generate_all_figures
         generate_all_figures(bench_report_path, str(ablation_path), "results/figures")

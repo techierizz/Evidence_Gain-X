@@ -23,10 +23,10 @@ class CropDiseaseDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         case = self.cases[idx]
         img_path = Path(case.initial_image_path)
-        
+
         if not img_path.exists():
             raise FileNotFoundError(f"Image not found at {img_path}")
-            
+
         img = Image.open(img_path).convert("RGB")
         if self.transform:
             img_tensor = self.transform(img)

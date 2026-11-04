@@ -5,15 +5,9 @@ from typing import Dict, Any, Tuple, Optional, List
 from pathlib import Path
 
 class TextEvidenceEncoder(nn.Module):
-    """
-    Lightweight agricultural text and context encoder.
-    Maps diagnostic symptom keywords and microclimate weather data
-    into the shared visual-semantic embedding space.
-    """
     def __init__(self, embed_dim: int = 512, vocab_size: int = 256):
         super().__init__()
         self.embed_dim = embed_dim
-        # Keyword vocabulary hash embedding + linear projection
         self.embedding = nn.EmbeddingBag(vocab_size, 64, mode="mean")
         self.proj = nn.Sequential(
             nn.Linear(64, 128),
@@ -21,7 +15,6 @@ class TextEvidenceEncoder(nn.Module):
             nn.Linear(128, embed_dim),
             nn.LayerNorm(embed_dim)
         )
-        # Built-in agricultural vocabulary mapping for key symptomatic terms
         self.vocab = {
             "concentric": 1, "rings": 2, "target": 3, "dark": 4, "brown": 5,
             "chlorotic": 6, "halo": 7, "lower": 8, "water-soaked": 9, "irregular": 10,
@@ -79,34 +72,29 @@ class DiseaseClassifier(nn.Module):
         self.temperature = nn.Parameter(torch.ones(1) * 1.0, requires_grad=False)
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Extract visual representation embedding."""
         return self.backbone(x)
 
     def encode_text_evidence(self, texts: List[str], device: Optional[torch.device] = None) -> torch.Tensor:
-        """Encode textual symptoms or weather data into evidence embedding space."""
         if device is None:
             device = next(self.parameters()).device
         return self.text_encoder(texts, device)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        features = self.extract_features(x) # (B, embed_dim)
-        logits = self.classifier_head(features) # (B, num_classes)
+        features = self.extract_features(x)
+        logits = self.classifier_head(features)
         return logits, features
 
     def predict_logits_from_features(self, features: torch.Tensor) -> torch.Tensor:
-        """Compute logits from pre-extracted features."""
         return self.classifier_head(features)
 
     def predict_provisional(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         logits, features = self.forward(x)
         scaled_logits = logits / self.temperature
         probs = torch.softmax(scaled_logits, dim=-1)
-        
-        # Calculate entropy H(p) = -sum(p * log2(p + eps))
+
         eps = 1e-8
         entropy = -torch.sum(probs * torch.log2(probs + eps), dim=-1)
-        
-        # Sort probabilities for margin computation
+
         sorted_probs, sorted_indices = torch.sort(probs, descending=True, dim=-1)
         margin = sorted_probs[:, 0] - sorted_probs[:, 1]
 

@@ -22,19 +22,16 @@ def test_full_website_workflow():
     manifest = DatasetManifest.load_json('data/manifests/dataset_manifest.json')
     case_dict = {c.case_id: c for c in manifest.cases}
 
-    # Test Preset 1: Early Blight
     c1 = case_dict['tomato_early_blight_0001']
     s1 = pipeline.diagnose_initial(c1.initial_image_path)
     assert s1['leading_disease'] == 'early_blight'
     print("Test 1 Early Blight: OK")
 
-    # Test Preset 3: Septoria Spot (Look-alike Ambiguity)
     c3 = case_dict['tomato_septoria_leaf_spot_0001']
     s3 = pipeline.diagnose_initial(c3.initial_image_path)
     assert s3['is_ambiguous'] == True
     print("Test 3 Septoria Ambiguity: OK")
 
-    # Test Preset 5: Blurry Gating (Scenario C)
     b_ev = EvidenceItem(
         evidence_type='lesion_closeup',
         modality='image',
@@ -44,7 +41,6 @@ def test_full_website_workflow():
     assert s_blur['evidence_trail'][-1]['action'] == 'REJECTED'
     print("Test 5 Blurry Gating: OK")
 
-    # Test Preset 6: Contradiction Gating (Scenario B)
     c_ev = EvidenceItem(
         evidence_type='lesion_closeup',
         modality='image',
@@ -54,7 +50,6 @@ def test_full_website_workflow():
     assert s_contra['evidence_trail'][-1]['contradiction'] == True
     print("Test 6 Contradiction Gating: OK")
 
-    # Test Benchmark acquisition
     ev_key = 'lesion_closeup'
     bench_ev = c1.available_evidence[ev_key]
     s_bench = pipeline.process_single_evidence(copy.deepcopy(s1), ev_key, bench_ev)

@@ -6,11 +6,11 @@ import hashlib
 
 @dataclass
 class EvidenceItem:
-    evidence_type: str  # e.g., 'lesion_closeup', 'leaf_underside', 'stem_view', 'symptom_text', 'weather_context'
-    modality: str       # 'image', 'text', 'tabular'
-    data_path_or_content: str # Relative path to image or raw text/metadata string
-    reliability_hint: float = 1.0 # Ground truth quality rating (if annotated)
-    cost: float = 1.0 # Effort cost to acquire this observation
+    evidence_type: str
+    modality: str
+    data_path_or_content: str
+    reliability_hint: float = 1.0
+    cost: float = 1.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass

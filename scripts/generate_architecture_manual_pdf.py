@@ -1,9 +1,3 @@
-"""
-EvidenceGain-X PDF Architecture & Defense Manual Generator
-Generates a comprehensive, publication-grade PDF explaining the complete codebase directory,
-how each file contributes, data flow, deep learning concepts, and faculty review Q&A.
-"""
-
 import os
 import sys
 from pathlib import Path
@@ -15,9 +9,6 @@ from reportlab.platypus import (
 )
 from reportlab.pdfgen import canvas
 
-# ----------------------------------------------------------------------
-# Numbered Canvas for "Page X of Y" Footer & Running Header
-# ----------------------------------------------------------------------
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,15 +31,12 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#64748b"))
 
-        # Skip running header/footer on cover/first page
         if self._pageNumber > 1:
-            # Running Header
             self.drawString(54, 755, "EvidenceGain-X | Codebase Architecture Manual & Faculty Review Guide")
             self.setStrokeColor(colors.HexColor("#cbd5e1"))
             self.setLineWidth(0.5)
             self.line(54, 750, 558, 750)
 
-            # Running Footer
             page_text = f"Page {self._pageNumber} of {total_pages}"
             self.drawRightString(558, 35, page_text)
             self.drawString(54, 35, "CONFIDENTIAL - ACADEMIC PROJECT REVIEW & CODEBASE SPECIFICATION")
@@ -57,7 +45,6 @@ class NumberedCanvas(canvas.Canvas):
             self.line(54, 45, 558, 45)
 
         self.restoreState()
-
 
 def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     doc = SimpleDocTemplate(
@@ -71,15 +58,13 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     styles = getSampleStyleSheet()
 
-    # Custom Color Palette
-    PRIMARY = colors.HexColor("#0f172a")    # Deep Slate
-    SECONDARY = colors.HexColor("#047857")  # Forest Emerald
-    CYAN = colors.HexColor("#0284c7")       # Tech Blue
-    ROSE = colors.HexColor("#be123c")       # Alert Crimson
-    BG_LIGHT = colors.HexColor("#f8fafc")   # Card BG
+    PRIMARY = colors.HexColor("#0f172a")
+    SECONDARY = colors.HexColor("#047857")
+    CYAN = colors.HexColor("#0284c7")
+    ROSE = colors.HexColor("#be123c")
+    BG_LIGHT = colors.HexColor("#f8fafc")
     BORDER_LIGHT = colors.HexColor("#e2e8f0")
 
-    # Typography Styles
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Normal'],
@@ -217,9 +202,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story = []
 
-    # =========================================================================
-    # 1. COVER / HEADER BANNER
-    # =========================================================================
     story.append(Paragraph("EvidenceGain-X", title_style))
     story.append(Paragraph("Counterfactual, Self-Verifying Next-Best Evidence Acquisition for Crop Disease Diagnosis", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=2, color=SECONDARY, spaceBefore=0, spaceAfter=8))
@@ -233,11 +215,8 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     story.append(Paragraph(meta_text, meta_style))
     story.append(Spacer(1, 10))
 
-    # =========================================================================
-    # 2. EXECUTIVE SUMMARY & PROBLEM STATEMENT
-    # =========================================================================
     story.append(Paragraph("1. Executive Summary & The Problem with Existing Crop AI", h1_style))
-    
+
     p1 = (
         "Almost all deployed computer vision systems for foliar pathology operate in a <b>passive single-shot regime</b>: "
         "a farmer uploads a single macroscopic leaf photo (<i>X</i><sub>0</sub>), and a neural network (CNN or ViT) computes an uncalibrated "
@@ -263,21 +242,17 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     story.append(Paragraph(p2, body_style))
     story.append(Spacer(1, 6))
 
-    # =========================================================================
-    # 3. END-TO-END DATA FLOW & ARCHITECTURE DIAGRAM
-    # =========================================================================
     story.append(Paragraph("2. Complete 9-Module Architecture Flow", h1_style))
-    
+
     flowchart_path = "results/figures/architecture_flowchart.png"
     if os.path.exists(flowchart_path):
         story.append(Image(flowchart_path, width=460, height=330))
         story.append(Spacer(1, 4))
         caption = "<b>Figure 1:</b> <i>Complete 9-Module architecture of EvidenceGain-X. Blue indicates vision encoding; emerald indicates calibrated diagnosis & belief updating; purple indicates counterfactual planning; cyan indicates multi-factor utility selection; rose indicates dual self-verifying safety gating.</i>"
         story.append(Paragraph(caption, meta_style))
-    
+
     story.append(Spacer(1, 8))
 
-    # 9 Modules Table
     modules_table_data = [
         [Paragraph("Module #", table_header_style), Paragraph("Module Name", table_header_style), Paragraph("Algorithmic Implementation & Theoretical Role", table_header_style), Paragraph("Key Files", table_header_style)],
         [Paragraph("<b>M1</b>", table_cell_bold), Paragraph("Vision Backbone Encoder", table_cell_bold), Paragraph("Extracts deep visual embeddings from macroscopic leaf photography using an ImageNet-pretrained ResNet-18 residual architecture.", table_cell_style), Paragraph("<code>src/models/classifier.py</code>", table_cell_style)],
@@ -305,9 +280,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     story.append(t_mod)
     story.append(Spacer(1, 12))
 
-    # =========================================================================
-    # 4. EXHAUSTIVE DIRECTORY & FILE-BY-FILE TECHNICAL BREAKDOWN
-    # =========================================================================
     story.append(PageBreak())
     story.append(Paragraph("3. Exhaustive Codebase Directory Breakdown (File-by-File)", h1_style))
     story.append(Paragraph(
@@ -317,7 +289,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     ))
     story.append(Spacer(1, 6))
 
-    # --- 3.1 ROOT & CONFIGURATION FILES ---
     story.append(Paragraph("3.1 Root Configuration & Infrastructure", h2_style))
 
     files_root = [
@@ -326,7 +297,7 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
          "leakage-safe split ratios (0.70/0.15/0.15), ResNet-18 training hyper-parameters (lr=1e-4, weight_decay=1e-4, batch_size=16, epochs=15), "
          "evidence candidate costs, risk factors, and information-theoretic stopping thresholds (stopping_entropy=0.35, stopping_margin=0.70). "
          "Ensures strict reproducibility across all experiments without hardcoded constants."),
-        
+
         ("requirements.txt", "Production Dependency Specification",
          "Pins core scientific and deep learning dependencies: PyTorch 2.0+, Torchvision, OpenCV-Python (for Laplacian blur and photometric analysis), "
          "NumPy, SciPy, Scikit-Learn (macro metrics and ECE computation), Matplotlib (figure generation), PyYAML, and Streamlit (dark glassmorphic UI)."),
@@ -341,7 +312,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story.append(Spacer(1, 4))
 
-    # --- 3.2 DATA ENGINEERING & PREPARATION ---
     story.append(Paragraph("3.2 Data Engineering & Multimodal Episode Pipeline (<code>src/data/</code>)", h2_style))
 
     files_data = [
@@ -379,7 +349,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story.append(Spacer(1, 4))
 
-    # --- 3.3 DEEP LEARNING BACKBONE & CALIBRATION ---
     story.append(Paragraph("3.3 Deep Learning Backbone & Calibration (<code>src/models/</code>)", h2_style))
 
     files_models = [
@@ -403,7 +372,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
         story.append(Paragraph(f"• <b><code>{fn}</code> — {role}</b>", bullet_style))
         story.append(Paragraph(desc, qa_a_style))
 
-    # --- 3.4 ACTIVE DIAGNOSTIC INFERENCE ---
     story.append(PageBreak())
     story.append(Paragraph("3.4 Active Diagnostic Inference (<code>src/diagnosis/</code>)", h2_style))
 
@@ -435,7 +403,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story.append(Spacer(1, 4))
 
-    # --- 3.5 COUNTERFACTUAL PLANNING & UTILITY SELECTION ---
     story.append(Paragraph("3.5 Planning & Evidence Selection (<code>src/planning/</code> & <code>src/evidence/</code>)", h2_style))
 
     files_plan = [
@@ -462,7 +429,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story.append(Spacer(1, 4))
 
-    # --- 3.6 DUAL SELF-VERIFYING SAFETY SHIELD ---
     story.append(Paragraph("3.6 Dual Self-Verifying Safety Gating (<code>src/verification/</code>)", h2_style))
 
     files_verif = [
@@ -484,7 +450,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
 
     story.append(Spacer(1, 4))
 
-    # --- 3.7 EXECUTION SCRIPTS & USER INTERFACE ---
     story.append(Paragraph("3.7 Operational Scripts & Interactive UI (<code>scripts/</code> & <code>demo/</code>)", h2_style))
 
     files_ops = [
@@ -513,9 +478,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
         story.append(Paragraph(f"• <b><code>{fn}</code> — {role}</b>", bullet_style))
         story.append(Paragraph(desc, qa_a_style))
 
-    # =========================================================================
-    # 5. SCIENTIFIC RESULTS & ABLATION STUDY
-    # =========================================================================
     story.append(PageBreak())
     story.append(Paragraph("4. Scientific Benchmark & Experimental Results", h1_style))
     story.append(Paragraph(
@@ -525,7 +487,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     ))
     story.append(Spacer(1, 4))
 
-    # Benchmark Results Table
     bench_table_data = [
         [Paragraph("Index", table_header_style), Paragraph("Policy Strategy", table_header_style), Paragraph("Decision Logic", table_header_style), Paragraph("Top-1 Acc", table_header_style), Paragraph("Macro F1", table_header_style), Paragraph("Mean Steps", table_header_style), Paragraph("Delta H (Entropy)", table_header_style)],
         [Paragraph("<b>B0</b>", table_cell_bold), Paragraph("Initial Only", table_cell_bold), Paragraph("Passive single-shot CNN (Standard mobile crop AI approach)", table_cell_style), Paragraph("87.50%", table_cell_style), Paragraph("0.8773", table_cell_style), Paragraph("0.00", table_cell_style), Paragraph("0.000 bits", table_cell_style)],
@@ -551,7 +512,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     story.append(t_bench)
     story.append(Spacer(1, 8))
 
-    # Include Figure 1 and Figure 2 side by side
     fig1_path = "results/figures/figure1_accuracy_vs_observations.png"
     fig2_path = "results/figures/figure2_entropy_reduction.png"
     if os.path.exists(fig1_path) and os.path.exists(fig2_path):
@@ -567,10 +527,9 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
             ('TOPPADDING', (0, 0), (-1, -1), 2),
         ]))
         story.append(img_table)
-    
+
     story.append(Spacer(1, 6))
 
-    # Ablation Summary
     story.append(Paragraph("Ablation Study Insights", h2_style))
     p_abl = (
         "An ablation study across objective function weights confirmed the necessity of each component in <code>src/evidence/selector.py</code>: "
@@ -582,9 +541,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     )
     story.append(Paragraph(p_abl, body_style))
 
-    # =========================================================================
-    # 6. FACULTY REVIEW & DEFENSE Q&A MASTER CHEAT-SHEET
-    # =========================================================================
     story.append(PageBreak())
     story.append(Paragraph("5. Faculty Review Defense & Evaluation Q&A (Master Cheat-Sheet)", h1_style))
     story.append(Paragraph(
@@ -665,9 +621,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
         story.append(Paragraph(a, qa_a_style))
         story.append(Spacer(1, 2))
 
-    # =========================================================================
-    # 7. CONCLUSION & SUMMARY SPECIFICATION TABLE
-    # =========================================================================
     story.append(Spacer(1, 8))
     story.append(Paragraph("6. Project Quick-Reference Specifications", h1_style))
 
@@ -695,7 +648,6 @@ def build_pdf(filename="EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf"):
     ]))
     story.append(t_spec)
 
-    # Build document
     doc.build(story, canvasmaker=NumberedCanvas)
     print(f"PDF successfully built: {filename}")
 

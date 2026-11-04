@@ -28,7 +28,7 @@ class ClassifierTrainer:
         self.val_loader = val_loader
         self.device = device
         self.logger = setup_logger(logger_name)
-        
+
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         self.best_val_f1 = 0.0
@@ -99,7 +99,7 @@ class ClassifierTrainer:
         for epoch in range(1, epochs + 1):
             train_loss = self.train_epoch()
             val_metrics = self.evaluate(self.val_loader)
-            
+
             history.append({
                 "epoch": epoch,
                 "train_loss": train_loss,
@@ -116,7 +116,7 @@ class ClassifierTrainer:
             if val_metrics["macro_f1"] >= self.best_val_f1:
                 self.best_val_f1 = val_metrics["macro_f1"]
                 self.best_state_dict = self.model.state_dict()
-                
+
                 Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
                 torch.save({
                     "epoch": epoch,
@@ -125,7 +125,6 @@ class ClassifierTrainer:
                     "temperature": self.model.temperature.item()
                 }, checkpoint_path)
 
-        # Calibrate with temperature scaling on validation set
         if self.best_state_dict:
             self.model.load_state_dict(self.best_state_dict)
         val_eval = self.evaluate(self.val_loader)
@@ -134,7 +133,6 @@ class ClassifierTrainer:
         self.model.temperature.data.fill_(best_t)
         self.logger.info(f"Calibrated model with Temperature = {best_t:.4f}")
 
-        # Re-save checkpoint with calibrated temperature
         Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             "model_state_dict": self.model.state_dict(),

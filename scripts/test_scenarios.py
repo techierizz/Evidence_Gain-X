@@ -16,14 +16,10 @@ def run_scenario_tests():
     print("EVIDENCEGAIN-X: VERIFICATION OF SCENARIO B & SCENARIO C")
     print("=" * 70)
 
-    # -------------------------------------------------------------
-    # TEST SCENARIO C: IMAGE QUALITY & BLUR REJECTION (MODULE 7)
-    # -------------------------------------------------------------
     print("\n[TEST SCENARIO C] Image Quality, Blur & Lighting Gating (Module 7)")
     print("-" * 70)
     checker = EvidenceReliabilityChecker(blur_threshold=80.0, min_brightness=30.0)
 
-    # Test 1: Blurry Image
     blurry_item = EvidenceItem(
         evidence_type="lesion_closeup",
         modality="image",
@@ -38,7 +34,6 @@ def run_scenario_tests():
     assert rep_blur.action in ["REJECT", "DOWNWEIGHT"]
     print("   >>> PASS: Blurry image successfully gated!")
 
-    # Test 2: Dark / Underexposed Image
     dark_item = EvidenceItem(
         evidence_type="lesion_closeup",
         modality="image",
@@ -53,9 +48,6 @@ def run_scenario_tests():
     assert rep_dark.action == "REJECT"
     print("   >>> PASS: Underexposed image successfully rejected!")
 
-    # -------------------------------------------------------------
-    # TEST SCENARIO B: CONTRADICTION & WRONG LEAF UPLOAD (MODULE 8)
-    # -------------------------------------------------------------
     print("\n" + "=" * 70)
     print("[TEST SCENARIO B] Contradiction Verification & Wrong Leaf Upload (Module 8)")
     print("-" * 70)
@@ -66,7 +58,7 @@ def run_scenario_tests():
 
     classifier = DiseaseClassifier(num_classes=len(classes), pretrained=False)
     classifier.load_checkpoint("checkpoints/classifier_best.pt")
-    
+
     policy = EvidenceGainXPolicy(classes=classes, candidate_types=cand_types)
     pipeline = EvidenceGainXPipeline(
         classifier=classifier,
@@ -75,18 +67,15 @@ def run_scenario_tests():
         max_budget=3
     )
 
-    # Pick an ambiguous blight case
     sample_case = manifest.cases[0]
     print(f"Initial Plant Case: {sample_case.case_id} (True Disease: {sample_case.disease})")
-    
-    # 1. Provisional Diagnosis
+
     init_state = pipeline.diagnose_initial(sample_case.initial_image_path)
     print(f"1. Provisional Diagnosis from Initial Image:")
     print(f"   - Leading Hypothesis: {init_state['leading_disease']} ({init_state['leading_prob']*100:.1f}%)")
     print(f"   - Critical Rival:     {init_state['rival_disease']} ({init_state['rival_prob']*100:.1f}%)")
     print(f"   - Shannon Entropy:    {init_state['entropy']:.3f} bits (Ambiguous: {init_state['is_ambiguous']})")
 
-    # 2. Simulate User uploading a CONTRADICTORY Healthy Leaf instead of requested blight close-up
     print(f"\n2. User Uploads Contradictory Evidence (Healthy Leaf from another plant):")
     contradictory_ev = EvidenceItem(
         evidence_type="lesion_closeup",
@@ -102,7 +91,7 @@ def run_scenario_tests():
     print(f"   - Contradiction Score:  {trail_item['contradiction_score']:.3f}")
     print(f"   - System Explanation:   {trail_item['contradiction_explanation']}")
     print(f"   - Final Belief After:   {trail_item['leading_after']} ({trail_item['leading_prob_after']*100:.1f}%)")
-    
+
     assert trail_item["contradiction"] == True
     print("\n>>> PASS: Contradiction successfully detected and penalized! Model prevented false confidence.")
     print("=" * 70)

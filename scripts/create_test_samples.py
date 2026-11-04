@@ -6,7 +6,6 @@ def create_stress_test_samples(output_dir: str = "data/test_samples"):
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    # 1. Authentic Real Leaf Samples for Web/Camera Demo Testing
     real_sources = {
         "early_blight": Path("data/raw/tomato_early_blight_0001/initial_view.jpg"),
         "late_blight": Path("data/raw/tomato_late_blight_0001/initial_view.jpg"),
@@ -18,7 +17,6 @@ def create_stress_test_samples(output_dir: str = "data/test_samples"):
         if src.exists():
             shutil.copy(src, out_path / f"sample_real_{name}.jpg")
 
-    # 2. Healthy Leaf for Contradiction Test (Scenario B)
     healthy_src = real_sources["healthy"]
     if healthy_src.exists():
         shutil.copy(healthy_src, out_path / "sample_healthy_contradiction.jpg")
@@ -27,16 +25,13 @@ def create_stress_test_samples(output_dir: str = "data/test_samples"):
         base_img = Image.new("RGB", (224, 224), color=(34, 139, 34))
         base_img.save(out_path / "sample_healthy_contradiction.jpg")
 
-    # 3. Blurry Leaf (Scenario C - Reliability Rejection)
     blurry_img = base_img.filter(ImageFilter.GaussianBlur(radius=14))
     blurry_img.save(out_path / "sample_blurry.jpg", quality=90)
 
-    # 4. Underexposed / Dark Leaf (Scenario C - Lighting Rejection)
     dark_enhancer = ImageEnhance.Brightness(base_img)
     dark_img = dark_enhancer.enhance(0.08)
     dark_img.save(out_path / "sample_dark_underexposed.jpg", quality=90)
 
-    # 5. Real Late Blight Underside
     lb_under_src = Path("data/raw/tomato_late_blight_0001/leaf_underside.jpg")
     if lb_under_src.exists():
         shutil.copy(lb_under_src, out_path / "sample_valid_late_blight_underside.jpg")

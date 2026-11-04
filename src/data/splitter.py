@@ -13,8 +13,7 @@ def create_leakage_safe_splits(
     seed: int = 42
 ) -> Tuple[List[CaseRecord], List[CaseRecord], List[CaseRecord]]:
     set_seed(seed)
-    
-    # Group cases by (disease, plant_id) to stratify while ensuring plant-level isolation
+
     disease_to_plants: Dict[str, Dict[str, List[CaseRecord]]] = defaultdict(lambda: defaultdict(list))
     for c in manifest.cases:
         disease_to_plants[c.disease][c.plant_id].append(c)
@@ -30,7 +29,7 @@ def create_leakage_safe_splits(
         n_total = len(plant_ids)
         n_train = max(1, int(round(n_total * train_ratio)))
         n_val = max(1, int(round(n_total * val_ratio)))
-        
+
         train_plants = plant_ids[:n_train]
         val_plants = plant_ids[n_train:n_train + n_val]
         test_plants = plant_ids[n_train + n_val:]

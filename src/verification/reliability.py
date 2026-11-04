@@ -8,8 +8,8 @@ import cv2
 @dataclass
 class ReliabilityReport:
     is_acceptable: bool
-    quality_score: float # 0.0 to 1.0
-    action: str          # 'ACCEPT', 'DOWNWEIGHT', 'REJECT'
+    quality_score: float
+    action: str
     blur_score: float
     brightness_score: float
     reasons: list
@@ -26,10 +26,6 @@ class EvidenceReliabilityChecker:
         self.max_brightness = max_brightness
 
     def assess_image_quality(self, image_input: Any) -> ReliabilityReport:
-        """
-        Assesses image quality across blur, underexposure, and overexposure.
-        Supports file path strings, pathlib.Path, PIL.Image.Image, and numpy arrays.
-        """
         gray = None
 
         if isinstance(image_input, Image.Image):
@@ -70,11 +66,9 @@ class EvidenceReliabilityChecker:
                 brightness_score=0.0,
                 reasons=[f"Unsupported image input type: {type(image_input)}"]
             )
-        
-        # 1. Variance of Laplacian for blur detection
+
         blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-        
-        # 2. Mean brightness check
+
         mean_brightness = float(np.mean(gray))
 
         reasons = []
@@ -89,7 +83,6 @@ class EvidenceReliabilityChecker:
         if is_too_bright:
             reasons.append(f"Image is overexposed/too bright (brightness: {mean_brightness:.1f} > {self.max_brightness})")
 
-        # Compute normalized quality score using multiplicative factors
         blur_factor = min(1.0, blur_score / max(1.0, self.blur_threshold * 1.5))
         bright_factor = 1.0
         if mean_brightness < self.min_brightness:

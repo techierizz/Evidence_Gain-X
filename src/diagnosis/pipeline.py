@@ -36,7 +36,7 @@ class EvidenceGainXPipeline:
         self.max_budget = max_budget
         self.stopping_entropy = stopping_entropy
         self.stopping_margin = stopping_margin
-        
+
         self.candidate_types = candidate_types or [
             "lesion_closeup", "leaf_underside", "stem_view", "symptom_text", "weather_context"
         ]
@@ -56,7 +56,7 @@ class EvidenceGainXPipeline:
             img = path_or_pil.convert("RGB")
         else:
             img = path_or_pil
-        
+
         tensor = to_tensor(resize(img, [self.img_size, self.img_size]))
         tensor = normalize(tensor, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         return tensor.unsqueeze(0).to(self.device)
@@ -86,10 +86,6 @@ class EvidenceGainXPipeline:
         }
 
     def _extract_evidence_likelihood(self, ev_item: EvidenceItem) -> np.ndarray:
-        """
-        Real multimodal evidence feature extraction & likelihood estimation.
-        Processes either visual images or textual/contextual symptom strings.
-        """
         with torch.no_grad():
             if ev_item.modality == "image":
                 ev_tensor = self._load_image(ev_item.data_path_or_content)
@@ -110,13 +106,8 @@ class EvidenceGainXPipeline:
         evidence_type: str,
         ev_item: EvidenceItem
     ) -> Dict[str, Any]:
-        """
-        Executes Module 7 (Reliability) -> Module 5 (Counterfactual Expectation) ->
-        Module 8 (Contradiction Verification) -> Module 9 (Bayesian Posterior Update).
-        """
         step_num = len(state["evidence_trail"]) + 1
 
-        # 1. Evidence Quality / Reliability Check
         rel_report = self.reliability_checker.assess_evidence(ev_item)
         if rel_report.action == "REJECT":
             state["evidence_trail"].append({
@@ -135,13 +126,11 @@ class EvidenceGainXPipeline:
             })
             return state
 
-        # 2. Extract Real Evidence Likelihood Profile
         ev_likelihood = self._extract_evidence_likelihood(ev_item)
 
-        # 3. Competing hypothesis indices & Counterfactual Planning expectation
         h1_name = state["leading_disease"]
         h2_name = state["rival_disease"] or state["top_hypotheses"][1].disease if len(state["top_hypotheses"]) > 1 else self.classes[(self.classes.index(h1_name) + 1) % len(self.classes)]
-        
+
         h1_idx = self.classes.index(h1_name)
         h2_idx = self.classes.index(h2_name)
 
@@ -155,7 +144,6 @@ class EvidenceGainXPipeline:
         expected_p_h1 = cf_plan["p_outcome_if_h1"]
         expected_p_h2 = cf_plan["p_outcome_if_h2"]
 
-        # 4. Tentative update to check for contradiction
         tentative_p = self.belief_updater.update_beliefs(
             prior_probs=prior_p,
             evidence_likelihood=ev_likelihood,
@@ -163,7 +151,6 @@ class EvidenceGainXPipeline:
             contradiction_penalty=1.0
         )
 
-        # 5. Contradiction Verification (Module 8)
         contra_report = self.contradiction_verifier.verify(
             prior_probs=prior_p,
             expected_probs=expected_p_h1,
@@ -174,7 +161,6 @@ class EvidenceGainXPipeline:
             classes=self.classes
         )
 
-        # 6. Final Bayesian belief update with contradiction penalty factor
         final_updated_p = self.belief_updater.update_beliefs(
             prior_probs=prior_p,
             evidence_likelihood=ev_likelihood,
@@ -182,7 +168,6 @@ class EvidenceGainXPipeline:
             contradiction_penalty=contra_report.penalty_factor
         )
 
-        # 7. Update diagnostic state
         hypo_analysis = self.hypothesis_tracker.analyze(torch.tensor(final_updated_p))
         state["current_probs"] = final_updated_p
         state["entropy"] = hypo_analysis["entropy"]
@@ -221,13 +206,11 @@ class EvidenceGainXPipeline:
         step = 0
 
         while step < self.max_budget:
-            # Check stopping criteria
             if state["entropy"] <= self.stopping_entropy and state["margin"] >= self.stopping_margin:
                 break
             if not remaining_candidates:
                 break
 
-            # Policy selects next-best candidate observation
             selected_cand = self.policy.select_next(state, remaining_candidates)
             if selected_cand is None:
                 break

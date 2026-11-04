@@ -8,7 +8,7 @@ class HypothesisRecord:
     disease: str
     class_idx: int
     probability: float
-    role: str # 'leading', 'critical_rival', 'secondary', 'low_prob'
+    role: str
 
 class CompetingHypothesisTracker:
     def __init__(self, classes: List[str], top_k: int = 3, margin_threshold: float = 0.25):
@@ -19,10 +19,10 @@ class CompetingHypothesisTracker:
     def analyze(self, probs: torch.Tensor) -> Dict[str, Any]:
         if probs.dim() == 2:
             probs = probs.squeeze(0)
-        
+
         p_np = probs.detach().cpu().numpy()
         sorted_indices = np.argsort(-p_np)
-        
+
         hypotheses: List[HypothesisRecord] = []
         for rank, idx in enumerate(sorted_indices[:self.top_k]):
             p_val = float(p_np[idx])
@@ -34,7 +34,7 @@ class CompetingHypothesisTracker:
                 role = "secondary"
             else:
                 role = "low_prob"
-            
+
             hypotheses.append(HypothesisRecord(
                 disease=self.classes[idx],
                 class_idx=int(idx),

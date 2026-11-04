@@ -24,7 +24,7 @@ class InitialOnlyPolicy(BaseAcquisitionPolicy):
         diagnostic_state: Dict[str, Any],
         available_candidates: List[str]
     ) -> Optional[str]:
-        return None # Never acquires additional evidence
+        return None
 
 class RandomPolicy(BaseAcquisitionPolicy):
     def __init__(self, seed: Optional[int] = 42):
@@ -75,15 +75,13 @@ class ConfidenceDrivenPolicy(BaseAcquisitionPolicy):
             return None
         leading_prob = diagnostic_state.get("leading_prob", 1.0)
         if leading_prob >= self.conf_threshold:
-            return None # Sufficient confidence, stop
-        # Otherwise select first available candidate
+            return None
         return available_candidates[0]
 
 class UncertaintyOnlyPolicy(BaseAcquisitionPolicy):
     def __init__(self, entropy_threshold: float = 0.5):
         super().__init__("B4_UncertaintyOnly")
         self.entropy_threshold = entropy_threshold
-        # Generic expected uncertainty reduction heuristic per candidate type
         self.cand_entropy_reduction_weights = {
             "lesion_closeup": 0.45,
             "leaf_underside": 0.35,
@@ -101,9 +99,8 @@ class UncertaintyOnlyPolicy(BaseAcquisitionPolicy):
             return None
         current_entropy = diagnostic_state.get("entropy", 0.0)
         if current_entropy <= self.entropy_threshold:
-            return None # Low uncertainty, stop
-        
-        # Select candidate with highest generic entropy reduction
+            return None
+
         best_cand = max(
             available_candidates,
             key=lambda c: self.cand_entropy_reduction_weights.get(c, 0.1)
@@ -111,12 +108,6 @@ class UncertaintyOnlyPolicy(BaseAcquisitionPolicy):
         return best_cand
 
 class EvidenceGainPolicy(BaseAcquisitionPolicy):
-    """
-    Baseline B5: Learned Evidence Utility Selector.
-    Uses the trained UtilityScoringNetwork to rank observations based on
-    learned information gain targets, without counterfactual planning
-    or contradiction self-verification.
-    """
     def __init__(
         self,
         selector: Any,
@@ -135,13 +126,12 @@ class EvidenceGainPolicy(BaseAcquisitionPolicy):
     ) -> Optional[str]:
         if not available_candidates:
             return None
-        
+
         entropy = diagnostic_state.get("entropy", 1.0)
         margin = diagnostic_state.get("margin", 0.0)
         if entropy <= self.stopping_entropy and margin >= self.stopping_margin:
             return None
 
-        # Build state feature vector: [probs, entropy, margin]
         probs_dict = diagnostic_state.get("full_distribution", {})
         probs_vec = np.array(list(probs_dict.values()), dtype=np.float32)
         state_repr = np.concatenate([probs_vec, [entropy, margin]])
