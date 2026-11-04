@@ -1017,6 +1017,31 @@ with col_right:
             </p>
         </div>
         """)
+    elif state.get("is_optical_rejected"):
+        blur_sc = state.get("optical_score", 0.0)
+        render_html(f"""
+        <div class="panel-card" style="border: 1px solid rgba(239, 68, 68, 0.45); background: linear-gradient(145deg, #241417, #180d0f);">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700; color: #ef4444; letter-spacing: 0.08em; text-transform: uppercase;">
+                MODULE 7 &bull; OPTICAL QUALITY GATE QUARANTINE
+            </div>
+            <div style="font-size: 1.45rem; font-weight: 800; color: #ffffff; margin: 6px 0 4px 0;">
+                Diagnosis Blocked: Severe Defocus Blur
+            </div>
+            <div style="font-size: 0.84rem; color: #fca5a5; margin-bottom: 1.2rem;">
+                Specimen failed optical resolution criteria &bull; Laplacian Variance: <b>{blur_sc:.1f} &sigma;&sup2;</b> (Minimum Threshold: &gt; 80.0 &sigma;&sup2;)
+            </div>
+
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem; line-height: 1.6; font-size: 0.88rem; color: #cbd5e1;">
+                <b style="color: #ffffff;">Why are disease probabilities withheld?</b><br>
+                Standard passive neural networks (like single-shot ResNet-18) blindly output high-confidence predictions (e.g. 89.5% Late Blight) when presented with blurry green noise because softmax forces outputs to sum to 100%.<br><br>
+                <b>EvidenceGain-X Module 7 enforces rigorous optical gating:</b> Corrupted or unreadable specimens are strictly quarantined from belief updating. No disease probabilities are emitted until optical clarity is achieved.
+            </div>
+
+            <div style="font-size: 0.82rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">
+                ACTION REQUIRED: Please capture or upload a clear, focused foliar photograph to initiate active diagnosis.
+            </div>
+        </div>
+        """)
     else:
         render_html("""
         <div class="panel-card">

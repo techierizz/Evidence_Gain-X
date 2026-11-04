@@ -62,6 +62,26 @@ class EvidenceGainXPipeline:
         return tensor.unsqueeze(0).to(self.device)
 
     def diagnose_initial(self, initial_image: Any) -> Dict[str, Any]:
+        q_check = self.reliability_checker.assess_image_quality(initial_image)
+        if not q_check.is_acceptable:
+            return {
+                "initial_probs": np.zeros(len(self.classes)),
+                "current_probs": np.zeros(len(self.classes)),
+                "entropy": 2.0,
+                "margin": 0.0,
+                "leading_disease": "Optical Quality Quarantined",
+                "leading_prob": 0.0,
+                "rival_disease": None,
+                "rival_prob": 0.0,
+                "top_hypotheses": [],
+                "full_distribution": {c: 0.0 for c in self.classes},
+                "is_ambiguous": True,
+                "is_optical_rejected": True,
+                "optical_reasons": q_check.reasons,
+                "optical_score": q_check.blur_score,
+                "conflict": None,
+                "evidence_trail": []
+            }
         x0 = self._load_image(initial_image)
         with torch.no_grad():
             res = self.classifier.predict_provisional(x0)
@@ -81,6 +101,7 @@ class EvidenceGainXPipeline:
             "top_hypotheses": hypo_analysis["top_hypotheses"],
             "full_distribution": hypo_analysis["full_distribution"],
             "is_ambiguous": hypo_analysis["is_ambiguous"],
+            "is_optical_rejected": False,
             "conflict": conflict_analysis,
             "evidence_trail": []
         }
