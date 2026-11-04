@@ -13,6 +13,10 @@ from src.models.classifier import DiseaseClassifier
 from src.evidence.selector import EvidenceGainXPolicy, EvidenceGainSelector
 from src.diagnosis.pipeline import EvidenceGainXPipeline
 
+def render_html(html_str: str):
+    clean = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
+    st.markdown(clean, unsafe_allow_html=True)
+
 st.set_page_config(
     page_title="EvidenceGain-X | Clinical Active Vision Console",
     page_icon="🔬",
@@ -20,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
+render_html("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
@@ -271,7 +275,7 @@ st.markdown("""
         background: #0d131f;
         border: 1px solid #1e293b;
         border-radius: 10px;
-        padding: 1rem;
+        padding: 1.1rem;
         margin-bottom: 1.2rem;
     }
     .prob-row {
@@ -319,22 +323,25 @@ st.markdown("""
     }
 
     .alert-box {
-        display: flex;
-        gap: 12px;
-        padding: 1rem 1.2rem;
+        padding: 1.1rem 1.3rem;
         border-radius: 10px;
         margin-top: 1.2rem;
         font-size: 0.88rem;
         line-height: 1.55;
     }
     .alert-box.alert-ambiguity {
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
-        border: 1px solid rgba(245, 158, 11, 0.35);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.05));
+        border: 1px solid rgba(245, 158, 11, 0.4);
         color: #fde68a;
     }
+    .alert-box.alert-provisional {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.05));
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        color: #bae6fd;
+    }
     .alert-box.alert-decisive {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04));
-        border: 1px solid rgba(16, 185, 129, 0.35);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(16, 185, 129, 0.05));
+        border: 1px solid rgba(16, 185, 129, 0.4);
         color: #a7f3d0;
     }
 
@@ -548,7 +555,7 @@ st.markdown("""
         border-right: 1px solid #1e293b;
     }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 @st.cache_resource
 def load_cached_classifier(ckpt_path: str, num_classes: int, backbone: str, device: str):
@@ -622,12 +629,12 @@ disease_gradients = {
 }
 
 with st.sidebar:
-    st.markdown("""
+    render_html("""
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1.2rem;">
             <div style="width: 10px; height: 10px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8;"></div>
             <span style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Diagnostic Controls</span>
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
     input_mode = st.radio(
         "Observation Input Mode:",
@@ -640,7 +647,7 @@ with st.sidebar:
     max_steps = st.slider("Evidence Budget Horizon (B):", 1, 5, cfg["evidence"]["max_budget"])
     pipeline.max_budget = max_steps
 
-    st.markdown("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>", unsafe_allow_html=True)
+    render_html("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>")
 
     if st.button("Reset Diagnostic Session", use_container_width=True):
         st.session_state["current_state"] = None
@@ -650,24 +657,24 @@ with st.sidebar:
         st.session_state["selected_case_id"] = "tomato_early_blight_0001" if manifest else None
         st.rerun()
 
-    st.markdown("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>", unsafe_allow_html=True)
-    st.markdown("""
+    render_html("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>")
+    render_html("""
         <div style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">
             Target Pathology Taxonomy
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
     for c in classes:
         col = disease_palette.get(c, "#10b981")
-        st.markdown(f"""
+        render_html(f"""
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #131c2e;">
                 <span style="font-size: 0.84rem; color: #cbd5e1; font-weight: 500;">{c.replace('_', ' ').title()}</span>
                 <span style="width: 10px; height: 10px; border-radius: 50%; background: {col}; box-shadow: 0 0 6px {col};"></span>
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
-    st.markdown("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>", unsafe_allow_html=True)
-    st.markdown(r"""
+    render_html("<div style='height: 1px; background: #1e293b; margin: 1.2rem 0;'></div>")
+    render_html(r"""
         <div style="font-size: 0.74rem; color: #64748b; line-height: 1.6; font-family: 'JetBrains Mono', monospace;">
             <b style="color: #94a3b8;">SYSTEM METRICS:</b><br>
             Encoder: ResNet-18 (ImageNet)<br>
@@ -675,9 +682,9 @@ with st.sidebar:
             Entropy Stop: H &le; 0.350 bits<br>
             Margin Stop: &Delta;p &ge; 0.400
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
-st.markdown("""
+render_html("""
 <div class="top-header">
     <div class="header-brand">
         <div class="header-title">EvidenceGain-X</div>
@@ -690,23 +697,23 @@ st.markdown("""
         <div class="telemetry-chip">CALIBRATION: T=1.89</div>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
-st.markdown("""
+render_html("""
 <div class="preset-container">
     <div class="preset-header">Validated Clinical Case Scenarios & Stress Tests</div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 p1, p2, p3, p4, p5, p6 = st.columns(6)
 
 with p1:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #f59e0b;">
         <span class="preset-badge-tag" style="color: #f59e0b;">PATHOLOGY</span>
         <div class="preset-sub-text">Alternaria solani</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Early Blight", key="preset_eb", use_container_width=True):
         cid = "tomato_early_blight_0001"
         c_rec = case_dict.get(cid)
@@ -719,12 +726,12 @@ with p1:
         st.rerun()
 
 with p2:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #ef4444;">
         <span class="preset-badge-tag" style="color: #ef4444;">PATHOLOGY</span>
         <div class="preset-sub-text">Phytophthora</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Late Blight", key="preset_lb", use_container_width=True):
         cid = "tomato_late_blight_0001"
         c_rec = case_dict.get(cid)
@@ -737,12 +744,12 @@ with p2:
         st.rerun()
 
 with p3:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #a855f7;">
         <span class="preset-badge-tag" style="color: #a855f7;">AMBIGUITY</span>
         <div class="preset-sub-text">Look-Alike Boundary</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Septoria Spot", key="preset_sep", use_container_width=True):
         cid = "tomato_septoria_leaf_spot_0001"
         c_rec = case_dict.get(cid)
@@ -755,12 +762,12 @@ with p3:
         st.rerun()
 
 with p4:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #10b981;">
         <span class="preset-badge-tag" style="color: #10b981;">CONTROL</span>
         <div class="preset-sub-text">Healthy Negative</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Healthy Control", key="preset_hea", use_container_width=True):
         cid = "tomato_healthy_0001"
         c_rec = case_dict.get(cid)
@@ -773,12 +780,12 @@ with p4:
         st.rerun()
 
 with p5:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #06b6d4;">
         <span class="preset-badge-tag" style="color: #06b6d4;">SAFETY M7</span>
         <div class="preset-sub-text">Defocus Blur Gate</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Test: Blur Gating", key="preset_blur", use_container_width=True):
         cid = "tomato_septoria_leaf_spot_0001"
         c_rec = case_dict.get(cid)
@@ -800,12 +807,12 @@ with p5:
         st.rerun()
 
 with p6:
-    st.markdown("""
+    render_html("""
     <div class="preset-card-top" style="border-top: 3px solid #f43f5e;">
         <span class="preset-badge-tag" style="color: #f43f5e;">SAFETY M8</span>
         <div class="preset-sub-text">Contradiction Gate</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     if st.button("Test: Contradiction", key="preset_contra", use_container_width=True):
         cid = "tomato_early_blight_0001"
         c_rec = case_dict.get(cid)
@@ -826,32 +833,32 @@ with p6:
         st.session_state["current_state"] = updated_state
         st.rerun()
 
-st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+render_html("<div style='height: 12px;'></div>")
 
 col_left, col_right = st.columns([1, 1.3], gap="large")
 
 with col_left:
-    st.markdown("""
+    render_html("""
     <div class="panel-card">
         <div class="panel-title">
             <span class="panel-title-number">01</span>
             Specimen Observation (X₀)
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
     if st.session_state.get("active_preset_name"):
-        st.markdown(f"""
+        render_html(f"""
         <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 10px; padding: 6px 10px; background: #131c2e; border-radius: 6px; border: 1px solid #1e293b;">
             Active Case: <b style="color: #f1f5f9;">{st.session_state['active_preset_name']}</b>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
     curr_input_mode = st.session_state["input_source_mode"]
 
     if curr_input_mode == "Live Image Ingestion":
         uploaded_file = st.file_uploader("Upload macroscopic leaf photograph:", type=["jpg", "jpeg", "png"])
 
-        st.markdown("<div style='font-size: 0.76rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin: 10px 0 6px 0;'>Or select reference specimen:</div>", unsafe_allow_html=True)
+        render_html("<div style='font-size: 0.76rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin: 10px 0 6px 0;'>Or select reference specimen:</div>")
         s_c1, s_c2, s_c3 = st.columns(3)
         with s_c1:
             if st.button("Sample: Septoria", use_container_width=True):
@@ -881,15 +888,16 @@ with col_left:
 
             q_check = pipeline.reliability_checker.assess_image_quality(live_pil)
 
-            st.markdown("""
+            render_html("""
             <div class="viewfinder-box">
                 <div class="viewfinder-hud">
                     <span>OPTICAL SENSOR VIEW • FOV 1.0X</span>
                     <span>INGESTED SAMPLE</span>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+            """)
             st.image(live_pil, use_container_width=True)
-            st.markdown(f"""
+            render_html(f"""
                 <div class="telemetry-row">
                     <div class="telemetry-cell">
                         <div class="telemetry-cell-label">LAPLACIAN SHARPNESS</div>
@@ -900,15 +908,14 @@ with col_left:
                         <div class="telemetry-cell-val">{q_check.brightness_score:.1f} cd/m&sup2;</div>
                     </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+            """)
 
             if not q_check.is_acceptable:
-                st.markdown(f"""
+                render_html(f"""
                 <div class="alert-box alert-ambiguity" style="border-color: #ef4444; color: #fca5a5; background: rgba(239, 68, 68, 0.1);">
                     <div><b>Optical Quality Flag:</b> {", ".join(q_check.reasons)}</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
             if st.button("Execute Provisional Diagnosis", type="primary", use_container_width=True):
                 st.session_state["current_state"] = pipeline.diagnose_initial(live_pil)
@@ -917,18 +924,18 @@ with col_left:
                 st.rerun()
         elif st.session_state.get("active_image_path_or_pil"):
             disp_target = st.session_state["active_image_path_or_pil"]
-            st.markdown("""
+            render_html("""
             <div class="viewfinder-box">
                 <div class="viewfinder-hud">
                     <span>OPTICAL SENSOR VIEW • FOV 1.0X</span>
                     <span>ACTIVE SAMPLE</span>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+            """)
             if isinstance(disp_target, (str, Path)) and Path(disp_target).exists():
                 st.image(str(disp_target), use_container_width=True)
             elif isinstance(disp_target, Image.Image):
                 st.image(disp_target, use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
 
     else:
         if manifest:
@@ -951,15 +958,16 @@ with col_left:
                 initial_img = Image.open(case_record.initial_image_path)
                 q_check = pipeline.reliability_checker.assess_image_quality(case_record.initial_image_path)
 
-                st.markdown(f"""
+                render_html(f"""
                 <div class="viewfinder-box">
                     <div class="viewfinder-hud">
                         <span>RECORD: {case_record.case_id}</span>
                         <span>GROUND TRUTH: {case_record.disease.replace('_', ' ').upper()}</span>
                     </div>
-                """, unsafe_allow_html=True)
+                </div>
+                """)
                 st.image(initial_img, use_container_width=True)
-                st.markdown(f"""
+                render_html(f"""
                     <div class="telemetry-row">
                         <div class="telemetry-cell">
                             <div class="telemetry-cell-label">LAPLACIAN SHARPNESS</div>
@@ -970,8 +978,7 @@ with col_left:
                             <div class="telemetry-cell-val">{q_check.brightness_score:.1f} cd/m&sup2; <span style="font-size: 0.7rem; color: #10b981;">(NOMINAL)</span></div>
                         </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                """)
 
             if st.button("Run Provisional Diagnosis", type="primary", use_container_width=True):
                 st.session_state["current_state"] = pipeline.diagnose_initial(case_record.initial_image_path)
@@ -979,12 +986,12 @@ with col_left:
                 st.session_state["active_preset_name"] = None
                 st.rerun()
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    render_html('</div>')
 
 with col_right:
     state = st.session_state.get("current_state")
     if state is None:
-        st.markdown("""
+        render_html("""
         <div class="panel-card" style="text-align: center; padding: 3.5rem 1.5rem;">
             <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); margin: 0 auto 1.2rem auto; display: flex; align-items: center; justify-content: center;">
                 <div style="width: 14px; height: 14px; border-radius: 50%; background: #38bdf8;"></div>
@@ -994,61 +1001,54 @@ with col_right:
                 Select a benchmark specimen or load one of the clinical case presets above to initiate active sequential hypothesis tracking.
             </p>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     else:
-        st.markdown("""
+        render_html("""
         <div class="panel-card">
             <div class="panel-title">
                 <span class="panel-title-number">02</span>
                 Provisional Hypothesis Tracking &amp; Entropy State
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
         lead_color = disease_palette.get(state["leading_disease"], "#38bdf8")
 
         k1, k2, k3 = st.columns(3)
         with k1:
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-cell" style="border-top-color: {lead_color};">
                 <div class="metric-label">Leading Hypothesis (h₁)</div>
                 <div class="metric-value" style="color: {lead_color}; font-size: 1.25rem;">{state['leading_disease'].replace('_', ' ').title()}</div>
                 <div class="metric-sub">Rank 1 Posterior</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         with k2:
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-cell accent-emerald">
                 <div class="metric-label">Calibrated Probability</div>
                 <div class="metric-value">{state['leading_prob']*100:.1f}%</div>
                 <div class="metric-sub">Platt Scaled (T=1.89)</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         with k3:
             ent_val = state['entropy']
             ent_accent = "accent-emerald" if ent_val <= pipeline.stopping_entropy else "accent-amber"
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-cell {ent_accent}">
                 <div class="metric-label">Shannon Entropy H(P)</div>
                 <div class="metric-value">{ent_val:.3f} <span style="font-size: 0.78rem; font-weight: 500; color: #94a3b8;">bits</span></div>
                 <div class="metric-sub">Threshold &le; {pipeline.stopping_entropy:.2f} bits</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-        st.markdown("""
-        <div class="prob-container">
-            <div style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">
-                Calibrated Posterior Distribution
-            </div>
-        """, unsafe_allow_html=True)
-
+        prob_rows_html = ""
         for i, c_name in enumerate(classes):
             p_val = state["current_probs"][i]
             bar_grad = disease_gradients.get(c_name, "linear-gradient(90deg, #059669, #34d399)")
             is_lead = (c_name == state["leading_disease"])
-
             badge_html = '<span class="prob-lead-badge">LEADING</span>' if is_lead else ''
 
-            st.markdown(f"""
+            prob_rows_html += f"""
             <div class="prob-row">
                 <div class="prob-labels">
                     <div class="prob-name-box">
@@ -1065,41 +1065,58 @@ with col_right:
                     <div class="prob-bar" style="width: {p_val*100:.1f}%; background: {bar_grad};"></div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        render_html(f"""
+        <div class="prob-container">
+            <div style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">
+                Calibrated Posterior Distribution
+            </div>
+            {prob_rows_html}
+        </div>
+        """)
 
         rival = state.get("rival_disease")
         margin = state.get("margin", 1.0)
+        entropy = state.get("entropy", 1.0)
 
-        if state["is_ambiguous"] and rival:
-            st.markdown(f"""
+        if margin <= 0.25 and rival:
+            render_html(f"""
             <div class="alert-box alert-ambiguity">
                 <div>
                     <b>Critical Look-Alike Ambiguity Detected:</b><br>
-                    Margin narrow between <i>{state['leading_disease'].replace('_', ' ').title()}</i> and <i>{rival.replace('_', ' ').title()}</i> (&Delta;p = {margin:.2f}). Single-shot classifiers yield severe diagnostic error on this boundary. EvidenceGain-X initiates goal-directed inquiry.
+                    Hypothesis margin is critically narrow between <i>{state['leading_disease'].replace('_', ' ').title()}</i> and <i>{rival.replace('_', ' ').title()}</i> (&Delta;p = {margin:.2f} &le; 0.25). Passive single-shot classifiers suffer severe confusion on this morphological boundary. EvidenceGain-X initiates goal-directed inquiry to resolve the ambiguity.
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
+        elif entropy > pipeline.stopping_entropy:
+            render_html(f"""
+            <div class="alert-box alert-provisional">
+                <div>
+                    <b>Provisional Hypothesis Lead (Active Inquiry Required):</b><br>
+                    <i>{state['leading_disease'].replace('_', ' ').title()}</i> holds a distinct provisional lead over <i>{rival.replace('_', ' ').title() if rival else 'alternatives'}</i> (&Delta;p = {margin:.2f}, {state['leading_prob']*100:.1f}%). However, Shannon entropy H(P) = {entropy:.3f} bits remains above clinical stopping certainty (&le; {pipeline.stopping_entropy:.2f} bits). EvidenceGain-X recommends acquiring next-best evidence to reach definitive diagnostic closure.
+                </div>
+            </div>
+            """)
         else:
-            st.markdown(f"""
+            render_html(f"""
             <div class="alert-box alert-decisive">
                 <div>
-                    <b>Decisive Separation Achieved:</b><br>
-                    Leading hypothesis <i>{state['leading_disease'].replace('_', ' ').title()}</i> established dominant separation (&Delta;p = {margin:.2f}).
+                    <b>Decisive Diagnostic Separation Achieved:</b><br>
+                    Leading hypothesis <i>{state['leading_disease'].replace('_', ' ').title()}</i> established dominant separation (&Delta;p = {margin:.2f}, {state['leading_prob']*100:.1f}%) with entropy H(P) = {entropy:.3f} bits &le; {pipeline.stopping_entropy:.2f} bits. Stopping criteria satisfied.
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        render_html('</div>')
 
-        st.markdown("""
+        render_html("""
         <div class="panel-card">
             <div class="panel-title">
                 <span class="panel-title-number">03</span>
                 Next-Best Evidence Recommendation (e*)
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
         used_cands = [item["evidence_type"] for item in state["evidence_trail"]]
         rem_cands = [c for c in cand_types if c not in used_cands]
@@ -1107,12 +1124,12 @@ with col_right:
         if not rem_cands:
             st.info("All candidate evidence modalities have been exhausted for this episode.")
         elif state["entropy"] <= pipeline.stopping_entropy and state["margin"] >= pipeline.stopping_margin:
-            st.markdown(r"""
+            render_html(r"""
             <div class="alert-box alert-decisive" style="display: block; text-align: center; padding: 1.4rem;">
                 <div style="font-weight: 700; font-size: 1.05rem; color: #34d399; margin-bottom: 4px;">Stopping Criterion Satisfied (H(P) &le; 0.35 bits)</div>
                 <div style="font-size: 0.85rem; color: #cbd5e1;">Diagnostic certainty resolved. Counterfactual utility indicates further acquisition yields diminishing information return.</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         else:
             h1_idx = classes.index(state["leading_disease"])
             h2_name = state["rival_disease"] or classes[(h1_idx + 1) % len(classes)]
@@ -1127,7 +1144,7 @@ with col_right:
             best_cand_row = u_df.loc[u_df["total_utility"].idxmax()]
             best_cand = best_cand_row["candidate"]
 
-            st.markdown(f"""
+            render_html(f"""
             <div class="hero-recommendation-card">
                 <div class="hero-rec-top">
                     <span class="hero-rec-tag">OPTIMAL INQUIRY QUERY (e*)</span>
@@ -1149,7 +1166,7 @@ with col_right:
                     </div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             table_rows_html = ""
             sorted_u_df = u_df.sort_values(by="total_utility", ascending=False)
@@ -1168,7 +1185,7 @@ with col_right:
                 </tr>
                 """
 
-            st.markdown(f"""
+            table_full_html = f"""
             <table class="clinical-table">
                 <thead>
                     <tr>
@@ -1184,7 +1201,8 @@ with col_right:
                     {table_rows_html}
                 </tbody>
             </table>
-            """, unsafe_allow_html=True)
+            """
+            render_html(table_full_html)
 
             with st.expander(f"Acquire Clue: {best_cand.replace('_', ' ').title()}", expanded=True):
                 ev_to_submit = None
@@ -1192,11 +1210,11 @@ with col_right:
 
                 if active_case and best_cand in active_case.available_evidence:
                     b_item = active_case.available_evidence[best_cand]
-                    st.markdown(f"<div style='font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;'>Authentic Benchmark Clue: <code>{b_item.evidence_type}</code> ({b_item.modality})</div>", unsafe_allow_html=True)
+                    render_html(f"<div style='font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;'>Authentic Benchmark Clue: <code>{b_item.evidence_type}</code> ({b_item.modality})</div>")
                     if st.button(f"Acquire Benchmark Observation ({best_cand.replace('_', ' ').title()})", type="primary", use_container_width=True):
                         ev_to_submit = b_item
 
-                st.markdown("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Stress-Testing Controls</div>", unsafe_allow_html=True)
+                render_html("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Stress-Testing Controls</div>")
                 sc_c1, sc_c2 = st.columns(2)
                 with sc_c1:
                     if st.button("Inject Defocus Blur (Module 7)", use_container_width=True):
@@ -1215,7 +1233,7 @@ with col_right:
                             cost=1.0
                         )
 
-                st.markdown("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Or Ingest Live Field Clue</div>", unsafe_allow_html=True)
+                render_html("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Or Ingest Live Field Clue</div>")
 
                 if best_cand in ["lesion_closeup", "leaf_underside", "stem_view"]:
                     live_ev_file = st.file_uploader(f"Upload {best_cand.replace('_', ' ').title()}:", type=["jpg", "png", "jpeg"], key=f"live_{best_cand}")
@@ -1245,21 +1263,21 @@ with col_right:
                         st.session_state["current_state"] = updated_state
                         st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        render_html('</div>')
 
 if state and len(state["evidence_trail"]) > 0:
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    render_html("<div style='height: 14px;'></div>")
 
     col_t1, col_t2 = st.columns([1.4, 1.1], gap="large")
 
     with col_t1:
-        st.markdown("""
+        render_html("""
         <div class="panel-card">
             <div class="panel-title">
                 <span class="panel-title-number">04</span>
                 Sequential Diagnostic Audit Trail
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
         for item in state["evidence_trail"]:
             act = item.get("action", "ACCEPT")
@@ -1270,7 +1288,7 @@ if state and len(state["evidence_trail"]) > 0:
             badge_bg = "rgba(239, 68, 68, 0.12)" if is_rejected else "rgba(16, 185, 129, 0.12)"
             badge_border = "rgba(239, 68, 68, 0.3)" if is_rejected else "rgba(16, 185, 129, 0.3)"
 
-            st.markdown(f"""
+            render_html(f"""
             <div class="audit-step-node {node_cls}">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <div style="font-weight: 700; color: #ffffff; font-size: 0.92rem;">
@@ -1280,58 +1298,62 @@ if state and len(state["evidence_trail"]) > 0:
                         {act}
                     </span>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+            """)
 
             with st.expander(f"Audit Details: Step {item['step']}", expanded=True):
-                st.markdown(f"""
+                render_html(f"""
                 <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;">
                     <b>Module 7 Optical Gating:</b> Quality Score: <code>{item['quality_score']:.2f}</code>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
                 if item.get("reasons"):
-                    st.markdown(f"<div style='font-size: 0.8rem; color: #fca5a5; margin-bottom: 6px;'><b>Gating Rejection:</b> {', '.join(item['reasons'])}</div>", unsafe_allow_html=True)
+                    render_html(f"<div style='font-size: 0.8rem; color: #fca5a5; margin-bottom: 6px;'><b>Gating Rejection:</b> {', '.join(item['reasons'])}</div>")
 
                 if is_rejected:
-                    st.markdown("""
+                    render_html("""
                     <div class="alert-box alert-ambiguity" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.1); color: #fca5a5; margin-top: 6px;">
                         <div><b>Optical Filter Triggered:</b> Image failed sharpness criteria. Gated from Bayesian posterior calculation to prevent distribution poisoning.</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
                 else:
                     is_contra = item.get("contradiction", False)
                     if is_contra:
-                        st.markdown(f"""
+                        render_html(f"""
                         <div class="alert-box alert-ambiguity" style="margin-top: 6px;">
                             <div><b>Contradiction Detected (Module 8):</b> {item.get('contradiction_explanation')}</div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """)
                     else:
-                        st.markdown("""
+                        render_html("""
                         <div class="alert-box alert-decisive" style="padding: 8px 12px; margin-top: 6px; font-size: 0.82rem;">
                             <div>Observation verified congruent with counterfactual diagnosis.</div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """)
 
-                st.markdown(f"""
+                render_html(f"""
                 <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 10px; padding-top: 8px; border-top: 1px solid #1e293b;">
                     <span>Hypothesis: <b style="color: #ffffff;">{item['leading_after'].replace('_', ' ').title()}</b> ({item['leading_prob_after']*100:.1f}%)</span>
                     <span>Entropy: <code style="color: #38bdf8;">{item['entropy_after']:.3f} bits</code></span>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
+        render_html('</div>')
 
     with col_t2:
-        st.markdown("""
+        final_disease = state['leading_disease'].replace('_', ' ').title()
+        init_lead_idx = int(np.argmax(state["initial_probs"]))
+        init_lead_name = classes[init_lead_idx]
+
+        init_p = np.array(state["initial_probs"])
+        h0 = float(-np.sum(init_p * np.log2(init_p + 1e-12)))
+        ht = float(state["entropy"])
+        delta_h = max(0.0, h0 - ht)
+
+        render_html(f"""
         <div class="clinical-certificate">
             <div class="cert-super">EVIDENCEGAIN-X &bull; VERIFIED CLINICAL AUDIT</div>
-        """, unsafe_allow_html=True)
-
-        final_disease = state['leading_disease'].replace('_', ' ').title()
-        st.markdown(f"""
             <div class="cert-disease-name">{final_disease}</div>
             <div class="cert-disease-sub">Target Folio-Pathology Confirmed</div>
             <div class="cert-grid">
@@ -1343,17 +1365,6 @@ if state and len(state["evidence_trail"]) > 0:
                     <div class="cert-cell-label">TOTAL HORIZON</div>
                     <div class="cert-cell-val">{len(state['evidence_trail'])} Step(s)</div>
                 </div>
-        """, unsafe_allow_html=True)
-
-        init_lead_idx = int(np.argmax(state["initial_probs"]))
-        init_lead_name = classes[init_lead_idx]
-
-        init_p = np.array(state["initial_probs"])
-        h0 = float(-np.sum(init_p * np.log2(init_p + 1e-12)))
-        ht = float(state["entropy"])
-        delta_h = max(0.0, h0 - ht)
-
-        st.markdown(f"""
                 <div class="cert-cell">
                     <div class="cert-cell-label">INITIAL ENTROPY H₀</div>
                     <div class="cert-cell-val">{h0:.3f} <span style="font-size: 0.72rem; color: #64748b;">bits</span></div>
@@ -1368,4 +1379,4 @@ if state and len(state["evidence_trail"]) > 0:
                 <div><b>Validation:</b> Temperature Scaled (T=1.8928) &bull; Module 7/8 Security Active</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
