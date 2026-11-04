@@ -1,56 +1,61 @@
-# 🌿 EvidenceGain-X
+# EvidenceGain-X
 
 > **Counterfactual, Self-Verifying Next-Best Evidence Acquisition for Crop Disease Diagnosis**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![Vision Backbone: ResNet-18](https://img.shields.io/badge/Backbone-ResNet--18%20(ImageNet)-emerald.svg)](https://pytorch.org/vision/stable/models.html)
-[![Dataset: PlantVillage](https://img.shields.io/badge/Dataset-PlantVillage%20(Authentic)-green.svg)](https://github.com/spMohanty/PlantVillage-Dataset)
-[![UI: Streamlit](https://img.shields.io/badge/UI-Streamlit%20Dark%20Glassmorphism-FF4B4B.svg)](https://streamlit.io/)
+[![Dataset: PlantVillage](https://img.shields.io/badge/Dataset-PlantVillage%20PV--Tomato-green.svg)](https://github.com/spMohanty/PlantVillage-Dataset)
+[![UI: Clinical Workstation](https://img.shields.io/badge/UI-Clinical%20Diagnostic%20Console-blue.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 📖 What is EvidenceGain-X in Simple Terms?
+## 👥 Project Team
 
-### The Real-World Problem with Existing Plant AI Apps
-Almost every mobile crop disease app today asks only one question: **"What disease is in this photo?"**  
-The user snaps a single leaf photo, and a neural network outputs a single guess.
-
-**Why this fails in real life:**
-1. **Look-Alike Diseases:** In early stages, completely different diseases look nearly identical on the leaf surface. For example, **Early Blight** (*Alternaria solani*) and **Septoria Leaf Spot** (*Septoria lycopersici*) both start as simple brown foliar spots. A standard AI is forced to make a hasty 50/50 guess.
-2. **Missing Key Clues:** The decisive symptom might be physically hidden on the other side of the leaf (such as the white downy fungal mold of **Late Blight** on the abaxial underside) or on the stem. A single photo cannot see what is physically hidden.
-3. **Blurry & Dark Photos:** Farmers take photos in bright sunlight, shadows, or with dirty camera lenses. Normal AI blindly processes blurry or black photos and makes confident, wrong predictions.
-4. **Uploading the Wrong Leaf:** If prompted for another photo, a farmer might accidentally photograph a different healthy plant. Existing models blindly fuse contradictory data and get confused.
-
----
-
-### How EvidenceGain-X Solves It: The "Doctor in the Field" Approach
-EvidenceGain-X behaves like an expert agricultural pathologist:
-1. **Diagnoses & Spots Ambiguity:** It evaluates the initial leaf photograph ($X_0$). If confident, it gives the diagnosis immediately. If ambiguous ($P(h_1) \approx P(h_2)$), it identifies the competing rival diseases.
-2. **Asks for the Single Best Clue ($e^*$):** Instead of asking for random photos, it calculates which specific evidence will separate the rivals with the lowest effort—e.g., *"Take a macro close-up of the lesion rings"* or *"Check the underside of the leaf for white mold."*
-3. **Reliability Gating (Module 7):** Before trusting your photo, it checks the pixels for blur (Laplacian variance) and lighting. If it's blurry or pitch black, it **blocks** the image and protects the diagnosis.
-4. **Contradiction Verification (Module 8):** If you upload a healthy leaf from another plant by mistake, the system flags the contradiction and dampens confidence instead of making a wrong diagnosis.
-5. **Adaptive Stopping:** It stops requesting evidence as soon as the uncertainty is resolved (Shannon entropy $H < 0.35$ bits).
+| S.No. | Student Name | Registration Number |
+| :---: | :--- | :---: |
+| 1 | **Amrit Raj** | `24BCE7856` |
+| 2 | **Kumar Sanib** | `24BCA7144` |
+| 3 | **Nikhil Yadav** | `24BCA7057` |
+| 4 | **Rishi Choudhary** | `24BCE7490` |
+| 5 | **Amit Venkat** | `24BCA7174` |
+| 6 | **Nihal Kakollu** | `24BCA7283` |
 
 ---
 
-## 🚀 Quick Run Guide (Get Running in 2 Minutes)
+## 📖 Overview: The Paradigm Shift in Crop Disease Diagnosis
 
-### Prerequisites
-- Python 3.10, 3.11, 3.12, or 3.13 installed.
-- Windows PowerShell, macOS Terminal, or Linux Shell.
+### The Failure of Passive Single-Shot Plant AI
+Conventional crop disease applications ask a single, passive question: **"Given this one photo, what disease is present?"**  
+A user takes a photograph, and a convolutional neural network (CNN) outputs a classification.
+
+**Why this paradigm fails in real-world agriculture:**
+1. **Morphological Look-Alikes:** In early vegetative stages, distinct pathologies present near-identical foliar lesions. For example, **Early Blight** (*Alternaria solani*) and **Septoria Leaf Spot** (*Septoria lycopersici*) both manifest as brown circular spots. Standard single-shot classifiers are forced to make uncalibrated guesses along ambiguous boundaries.
+2. **Hidden Diagnostic Discriminators:** The decisive diagnostic symptom is often occluded (e.g., downy fungal sporulation of **Late Blight** situated exclusively on the abaxial leaf underside, or petiole cankers on the stem). A single macroscopic image cannot observe what is physically concealed.
+3. **Softmax Hallucination on Blurry Images:** Standard CNNs (ResNet, MobileNet) normalize outputs via Softmax, which mathematically forces outputs to sum to 100%. When presented with out-of-focus, blurry, or overexposed images, passive models hallucinate high confidence (e.g., 89.5% Late Blight) on meaningless green noise.
+4. **Vulnerability to Contradictory Data:** When prompted for secondary evidence, farmers may inadvertently photograph an adjacent healthy leaf or a different plant. Conventional multi-modal networks fuse conflicting signals, poisoning the diagnostic posterior.
 
 ---
+
+### The EvidenceGain-X Solution: Active Counterfactual Diagnosis
+EvidenceGain-X acts as an **autonomous clinical diagnostic agent**:
+1. **Provisional Hypothesis Tracking:** Analyzes the initial foliar observation ($X_0$). If confidence is decisive, it stops. If look-alike ambiguity is detected ($P(h_1) \approx P(h_2)$), it identifies the competing rival pathologies.
+2. **Goal-Directed Evidence Selection ($e^*$):** Calculates the **Expected Information Gain (EIG)** across candidate modalities (lesion zoom, abaxial underside, stem view, weather context, field symptoms) to recommend the single most cost-effective discriminator.
+3. **Optical Quality Gating (Module 7):** Pre-screen inputs via Laplacian variance ($\text{Var}(\nabla^2 I) \ge 80.0\ \sigma^2$) and luminance. **Strictly blocks diagnosis on blurry, dark, or distorted images** to eliminate AI hallucination.
+4. **Contradiction Verification (Module 8):** Checks whether incoming evidence aligns with planned counterfactual trajectories. If a user uploads a healthy leaf into a diseased episode, Module 8 flags the conflict and dampens confidence to safeguard clinical integrity.
+5. **Adaptive Bayesian Stopping:** Halts sequential inquiry the moment uncertainty is resolved (Shannon entropy $H(P) \le 0.35\text{ bits}$ and margin $\Delta p \ge 0.40$).
+
+---
+
+## 🚀 Quick Start Guide
 
 ### Step 1: Clone & Setup Environment
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/KrSanib1544/EvidenseGain-X.git
-cd EvidenseGain-X
+git clone https://github.com/techierizz/Evidence_Gain-X.git
+cd Evidence_Gain-X
 
-# 2. Create and activate a virtual environment
 python -m venv .venv
 
 # On Windows (PowerShell):
@@ -58,185 +63,178 @@ python -m venv .venv
 # On Linux / macOS:
 source .venv/bin/activate
 
-# 3. Install required libraries
 pip install -r requirements.txt
 ```
 
 ---
 
-### Step 2: Launch the Interactive Web Application
-
-Start the Streamlit diagnostic web app:
+### Step 2: Launch the Clinical Diagnostic Console
 
 ```bash
 python -m streamlit run demo/app.py
 ```
 
-Now open your browser at: **`http://localhost:8501`**
+Open your browser at: **`http://localhost:8501`**
 
-#### 🎮 What You Can Do in the Web App:
-- **Instant 1-Click Demonstration Presets:** Click any of the 6 quick buttons at the top:
-  - 🍂 `Early Blight` — Loads authentic *Alternaria solani* with concentric ring lesions.
-  - 💧 `Late Blight` — Loads authentic *Phytophthora infestans* with water-soaked lesions.
-  - 🔬 `Septoria Spot` — Loads authentic *Septoria lycopersici* look-alike leaf.
-  - 🌿 `Healthy Leaf` — Loads clean healthy foliage.
-  - 🌫️ `Blurry Test` — Demonstrates **Module 7 Blur Rejection**.
-  - ⚡ `Contradiction` — Demonstrates **Module 8 Contradiction Gating**.
-- **Interactive Live Upload:** Switch to *Interactive Live Upload* in the left sidebar to upload ANY tomato leaf photograph from Google Images or your smartphone camera!
+#### Key Features in the Interface:
+- **Clinical Case Presets:** One-click presets for authentic agricultural scenarios:
+  - `Early Blight` — Validated *Alternaria solani* with concentric ring lesions.
+  - `Late Blight` — Validated *Phytophthora infestans* with water-soaked margins.
+  - `Septoria Spot` — Morphological look-alike ambiguity boundary case.
+  - `Healthy Control` — Negative control baseline.
+  - `Test: Blur Gating` — Demonstrates Module 7 Defocus Blur Quarantine.
+  - `Test: Contradiction` — Demonstrates Module 8 Contradiction Gating.
+- **Specimen Viewfinder & Telemetry HUD:** Real-time Laplacian sharpness ($\sigma^2$) and luminance ($cd/m^2$) sensors.
+- **Multimodal Evidence Ingestion:**
+  - *Direct Leaf Upload:* Upload photographic evidence (lesion close-up, leaf underside, stem view).
+  - *One-Click Weather:* Quick field microclimate buttons (Warm & Dry, Cool & Wet, Humid, Sunny).
+  - *Visual Symptoms:* Plain-language observation tags without textbook botanical jargon.
+- **Audit Trail & Adaptive Certification:** Dynamic clinical summary reflecting verified, provisional, gated, or contradicted diagnostic outcomes.
 
 ---
 
-### Step 3: Run the CLI Automated Validation Suite
+### Step 3: Run Automated Test Suites
 
-To quickly verify that image quality rejection and contradiction verification work via the command line:
+Verify pipeline integrity, blur rejection, and contradiction verification:
 
+```bash
+python tests/test_website_workflow.py
+```
+
+Expected output:
+```text
+Test 1 Early Blight: OK
+Test 3 Septoria Ambiguity: OK
+Test 5 Blurry Gating: OK
+Test 6 Contradiction Gating: OK
+Test Benchmark acquisition: OK
+ALL 5 WORKFLOW TESTS PASSED!
+```
+
+To run Scenario B & C stress tests:
 ```bash
 python scripts/test_scenarios.py
 ```
-
-**Expected output:**
-```
-[TEST SCENARIO C] Image Quality, Blur & Lighting Gating (Module 7)
-1. Blurry Image Assessment: Action: [REJECT] (Quality: 0.01) -> PASS!
-2. Dark Image Assessment:   Action: [REJECT] (Quality: 0.00) -> PASS!
-
-[TEST SCENARIO B] Contradiction Verification (Module 8)
-1. Provisional Diagnosis: Early Blight (71.4%)
-2. User uploads contradictory Healthy leaf:
-   Contradiction Flag: True (Divergence: 0.572) -> PASS!
-```
-
----
-
-### Step 4: Run End-to-End Experiments & Generate Paper Figures
-
-To run the complete 4-phase training, temperature calibration, 7-baseline comparative benchmark (B0 to B6), ablation study, and publication figure generation:
-
-```bash
-python scripts/run_experiments.py
-```
-
-This updates the figures in `results/figures/`:
-1. `figure1_accuracy_vs_observations.png` — Accuracy vs. Evidence Acquisition Steps.
-2. `figure2_entropy_reduction.png` — Shannon Entropy Reduction across baselines.
-3. `figure3_evidence_ranking.png` — Modality Utility Matrix ($e^*$).
-4. `figure4_diagnostic_evolution.png` — Step-by-step Bayesian Belief Evolution.
-5. `figure5_ablation_chart.png` — Component Ablation Comparison.
-
----
-
-## 📊 Dataset & Benchmark Details
-
-EvidenceGain-X is trained and evaluated on authentic agricultural photography:
-
-- **Primary Dataset:** **PlantVillage Tomato Foliar Pathology Benchmark (PV-Tomato)**  
-  *(Hughes & Salathé, 2015; Mohanty et al., Frontiers in Plant Science, 2016)*
-- **Target Crop:** Tomato (*Solanum lycopersicum*)
-- **Target Classes Monitored:**
-  1. `early_blight` (*Alternaria solani*)
-  2. `late_blight` (*Phytophthora infestans*)
-  3. `septoria_leaf_spot` (*Septoria lycopersici*)
-  4. `healthy`
-- **Leakage-Safe Splitting:** Partitions are grouped by **plant/source identities** (70% Train, 15% Val, 15% Test) to guarantee that photos from the same plant never appear in both training and test sets.
-- **Vision Backbone:** ResNet-18 initialized with official ImageNet-1K pretrained weights (`torchvision.models.ResNet18_Weights.DEFAULT`) and fine-tuned on real PlantVillage leaves.
-- **Calibration:** Post-hoc Temperature Scaling ($T = 1.8928$) minimizing Expected Calibration Error (ECE).
 
 ---
 
 ## 🔄 Complete 9-Module Architecture
 
-<p align="center">
-  <img src="results/figures/architecture_flowchart.png" alt="EvidenceGain-X Complete 9-Module Architecture Flowchart" width="100%" />
-</p>
-
-| Module | Name | Purpose in Plain English |
+| Module | Identifier | Scientific Purpose |
 | :--- | :--- | :--- |
-| **Module 1** | **Vision Encoder** | Extracts visual embeddings from leaf images using ImageNet-pretrained ResNet-18. |
-| **Module 2** | **Provisional Diagnosis** | Predicts initial probabilities, Shannon entropy $H$, and leading vs. rival hypotheses. |
-| **Module 3** | **Confusion Analysis** | Identifies the exact look-alike conflict (e.g. *Early Blight* vs *Late Blight*). |
-| **Module 4** | **Candidate Generator** | Lists available modalities: lesion closeup, leaf underside, stem view, symptom text, weather. |
-| **Module 5** | **Counterfactual Planning** | Simulates what the belief state *should* look like under each hypothesis before observing. |
-| **Module 6** | **Utility Selector** | Mathematically ranks evidence to pick the one with the highest information gain per cost. |
-| **Module 7** | **Reliability Checker** | Uses OpenCV Laplacian variance and mean brightness to block blurry/dark uploads. |
-| **Module 8** | **Contradiction Verifier** | Checks if the new image contradicts planned expectations (wrong leaf uploaded). |
-| **Module 9** | **Bayesian Updater** | Modulates likelihoods by reliability ($q$) and penalty ($\rho$) to update beliefs safely. |
+| **Module 1** | **Vision Feature Extractor** | Encodes foliar imagery via ImageNet-pretrained ResNet-18 backbone. |
+| **Module 2** | **Provisional Diagnosis** | Generates calibrated class posteriors, Shannon entropy $H(P)$, and leading/rival candidates. |
+| **Module 3** | **Confusion Analysis** | Identifies specific look-alike confusion pairs (e.g., Early Blight vs. Septoria Spot). |
+| **Module 4** | **Candidate Generator** | Indexes available evidence modalities (lesion zoom, underside, stem, symptoms, weather). |
+| **Module 5** | **Counterfactual Planning** | Simulates expected posterior trajectories under competing disease hypotheses. |
+| **Module 6** | **Active Utility Selector** | Computes Net Policy Utility $U(e) = \alpha \cdot D_{JS} + \beta \cdot \text{Exp}(\Delta H) - \lambda \cdot \text{Cost}$. |
+| **Module 7** | **Optical Quality Gating** | Evaluates Laplacian sharpness & luminance; blocks predictions on unreadable images. |
+| **Module 8** | **Contradiction Verification** | Detects adversarial/conflicting evidence; dampens confidence to prevent false lock. |
+| **Module 9** | **Bayesian Belief Updater** | Updates posterior distributions with reliability weighting ($q$) and penalty scaling ($\rho$). |
 
 ---
 
-## 📈 7-Baseline Scientific Comparison
+## 📈 Benchmark Evaluation (7-Baseline Comparison)
 
-We benchmarked EvidenceGain-X against 6 baseline policies on the authentic PlantVillage benchmark:
+EvidenceGain-X was benchmarked against 6 alternative decision policies across 24 test episodes from the authentic PlantVillage PV-Tomato dataset:
 
-| Index | Policy Name | Decision Strategy | Final Accuracy | Macro F1 | Steps Taken | Uncertainty Reduction |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **B0** | Initial Only | Passive single-shot CNN (Standard AI approach) | 87.50% | 0.8773 | 0.00 | 0.000 bits |
-| **B1** | Random | Chooses random evidence at each step | 87.50% | 0.8726 | 1.00 | 0.221 bits |
-| **B2** | Fixed Order | Always acquires in a static order | 91.67% | 0.9188 | 1.00 | 0.284 bits |
-| **B3** | Confidence Driven | Requests evidence based on raw softmax confidence | 87.50% | 0.8726 | 0.50 | 0.203 bits |
-| **B4** | Uncertainty Only | Only looks at entropy reduction | 83.33% | 0.8233 | 1.12 | 0.229 bits |
-| **B5** | EvidenceGain | Active utility selection without reliability gating | 91.67% | 0.9188 | 0.79 | 0.359 bits |
-| **B6** | **EvidenceGain-X** | **Full System:** Confusion-aware + Reliability + Contradiction | **91.67%** | **0.9188** | **0.88** | **0.359 bits** |
+| Baseline | Strategy | Accuracy | Macro F1 | Steps Taken | Entropy Reduction ($\Delta H$) |
+| :---: | :--- | :---: | :---: | :---: | :---: |
+| **B0** | Initial Only (Passive CNN) | 87.50% | 0.8773 | 0.00 | 0.000 bits |
+| **B1** | Random Acquisition | 87.50% | 0.8726 | 1.00 | 0.221 bits |
+| **B2** | Fixed Order Sequence | 91.67% | 0.9188 | 1.00 | 0.284 bits |
+| **B3** | Confidence-Driven | 87.50% | 0.8726 | 0.50 | 0.203 bits |
+| **B4** | Uncertainty-Only | 83.33% | 0.8233 | 1.12 | 0.229 bits |
+| **B5** | EvidenceGain (No Gating) | 91.67% | 0.9188 | 0.79 | 0.359 bits |
+| **B6** | **EvidenceGain-X (Full System)** | **91.67%** | **0.9188** | **0.88** | **0.359 bits** |
 
-*Under degraded/noisy test conditions (blur, darkness, wrong leaf upload), B0–B5 suffer severe errors, whereas EvidenceGain-X blocks 100% of invalid uploads.*
+*Under degraded test conditions (optical blur, underexposure, contradictory leaf upload), baselines B0–B5 experience severe misdiagnoses. EvidenceGain-X successfully gates 100% of invalid samples and penalizes contradictory inputs.*
 
 ---
 
-## 📁 Clean Repository Structure
+## ☁️ Deployment Guide
+
+### Option A: Streamlit Community Cloud (Recommended — Free, Fastest)
+
+1. Fork or push to GitHub: `https://github.com/techierizz/Evidence_Gain-X`
+2. Go to [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
+3. Click **New app**:
+   - **Repository:** `techierizz/Evidence_Gain-X`
+   - **Branch:** `main`
+   - **Main file path:** `demo/app.py`
+4. Click **Deploy!** The app will build and provide a public HTTPS URL.
+
+### Option B: Docker Container
+
+A production `Dockerfile` is included in the root directory:
+
+```bash
+docker build -t evidencegain-x .
+docker run -p 8501:8501 evidencegain-x
+```
+
+Open `http://localhost:8501` in your browser.
+
+### Option C: Live Zero-Cold-Start Tunnel (For In-Person Presentation)
+
+To present from your local computer with zero cold-boot delays:
+
+```bash
+python -m streamlit run demo/app.py --server.port 8501
+```
+
+In a second terminal:
+```bash
+npx cloudflared tunnel --url http://localhost:8501
+```
+This generates a live public HTTPS URL with instant response times and zero sleep.
+
+---
+
+## 📁 Repository Structure
 
 ```text
-EvidenseGain-X/
-├── configs/
-│   └── config.yaml             # Master pipeline parameters, loss weights, thresholds
+EvidenceGain-X/
 ├── checkpoints/
-│   └── classifier_best.pt      # Fine-tuned & calibrated ResNet-18 weights
+│   └── classifier_best.pt       # Calibrated ResNet-18 weights (tracked in Git)
+├── configs/
+│   └── config.yaml              # Hyperparameters, stopping thresholds & loss weights
 ├── data/
-│   ├── manifests/              # Leakage-safe train, val, and test split manifests (JSON)
-│   ├── raw/                    # 200 authentic PlantVillage multi-view episodes
-│   └── test_samples/           # Real foliar test images (blurry, dark, contradiction, real classes)
+│   ├── manifests/               # Leakage-safe train, val, and test manifests (JSON)
+│   ├── raw/                     # Multi-view foliar specimen episodes
+│   └── test_samples/            # Real test images (blur, underexposed, contradiction, real classes)
 ├── demo/
-│   └── app.py                  # Streamlit web app with bioluminescent glassmorphism UI
-├── results/
-│   ├── benchmark_results.json  # 7-baseline comparative benchmark metrics
-│   ├── ablation_results.json   # Systematic component ablation metrics
-│   └── figures/                # 5 publication-ready paper figures (PNG)
+│   └── app.py                   # Streamlit clinical research diagnostic console
+├── results/                     # Quantitative benchmark summaries and metrics
 ├── scripts/
-│   ├── download_data.py        # Official PlantVillage dataset downloader & episode builder
-│   ├── run_experiments.py      # End-to-end 4-phase training, calibration & benchmark engine
-│   ├── generate_figures.py     # Figure rendering script
-│   ├── create_test_samples.py  # Photographic stress-test sample generator
-│   └── test_scenarios.py       # Standalone CLI validation suite for Scenarios B & C
-├── src/                        # Complete 9-module core library
-│   ├── data/                   # Data loaders, episode builders, leakage-safe splitters
-│   ├── diagnosis/              # Pipeline, calibrated belief updater, hypothesis tracker
-│   ├── evaluation/             # Benchmark runner, baselines B0-B6, ablations
-│   ├── evidence/               # Multi-factor utility selector & policies
-│   ├── models/                 # ResNet-18 vision backbone, text encoder, temperature scaler
-│   ├── planning/               # Counterfactual evidence planner
-│   ├── utils/                  # Config loaders, logger, seed reproducibility
-│   └── verification/           # Reliability gating (Laplacian blur/light) & contradiction checker
-├── tests/                      # Automated unit and integration test suite
-├── README.md                   # You are here!
-└── requirements.txt            # Python dependencies
+│   ├── download_data.py         # PlantVillage dataset downloader & episode builder
+│   ├── run_experiments.py       # Benchmark evaluation script
+│   ├── generate_figures.py      # Scientific figure generator
+│   └── test_scenarios.py        # Standalone CLI validation for Scenarios B & C
+├── src/
+│   ├── data/                    # Dataset manifest and episode builders
+│   ├── diagnosis/               # Clinical pipeline and hypothesis tracking
+│   ├── evaluation/              # Benchmark runner and baseline evaluators
+│   ├── evidence/                # Active utility selector and decision policies
+│   ├── models/                  # ResNet-18 encoder and text embedding network
+│   ├── planning/                # Counterfactual trajectory planner
+│   ├── utils/                   # Config and reproducibility helpers
+│   └── verification/            # Module 7 (Optical Gate) & Module 8 (Contradiction Verifier)
+├── tests/                       # Automated test suite (test_website_workflow.py)
+├── Dockerfile                   # Production container definition
+├── EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf # Comprehensive manual
+├── README.md                    # Project documentation
+└── requirements.txt             # Clean Python dependency list
 ```
 
 ---
 
-## 🛡️ Research Documentation & Faculty Defense
-
-For complete mathematical derivations, proof of calibration, Shannon entropy formulations, and an academic defense cheat-sheet for faculty reviews:
-
-📄 **[View Full Research Paper Specification & Faculty Defense Dossier](research_paper_specification.md)**
-
----
-
-## 📜 Citation & License
-
-This project is licensed under the MIT License. If you use EvidenceGain-X in your research or project, please cite:
+## 📜 Academic Citation
 
 ```bibtex
 @article{evidencegainx2026,
   title={EvidenceGain-X: Counterfactual, Self-Verifying Next-Best Evidence Acquisition for Crop Disease Diagnosis},
-  author={Amrit Raj},
+  author={Amrit Raj and Kumar Sanib and Nikhil Yadav and Rishi Choudhary and Amit Venkat and Nihal Kakollu},
   year={2026}
 }
 ```
