@@ -468,6 +468,21 @@ render_html("""
         padding: 1.6rem;
         box-shadow: 0 10px 30px -5px rgba(16, 185, 129, 0.15);
     }
+    .clinical-certificate.cert-contradiction {
+        background: linear-gradient(145deg, #23180f, #181009);
+        border: 1px solid rgba(245, 158, 11, 0.5);
+        box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.2);
+    }
+    .clinical-certificate.cert-rejected {
+        background: linear-gradient(145deg, #241417, #180d0f);
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        box-shadow: 0 10px 30px -5px rgba(239, 68, 68, 0.2);
+    }
+    .clinical-certificate.cert-provisional {
+        background: linear-gradient(145deg, #132235, #0d1724);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        box-shadow: 0 10px 30px -5px rgba(56, 189, 248, 0.15);
+    }
     .cert-super {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.7rem;
@@ -1456,6 +1471,10 @@ if state and len(state["evidence_trail"]) > 0:
         render_html('</div>')
 
     with col_t2:
+        has_contradiction = any(item.get("contradiction", False) for item in state["evidence_trail"])
+        has_rejection = any(item.get("action") in ["REJECT", "REJECTED"] for item in state["evidence_trail"])
+        is_sufficient = (state["entropy"] <= pipeline.stopping_entropy and state["margin"] >= pipeline.stopping_margin and not has_contradiction)
+
         final_disease = state['leading_disease'].replace('_', ' ').title()
         init_lead_idx = int(np.argmax(state["initial_probs"]))
         init_lead_name = classes[init_lead_idx]
@@ -1465,15 +1484,56 @@ if state and len(state["evidence_trail"]) > 0:
         ht = float(state["entropy"])
         delta_h = max(0.0, h0 - ht)
 
+        if has_contradiction:
+            card_cls = "cert-contradiction"
+            cert_super = "EVIDENCEGAIN-X &bull; CONTRADICTION DETECTED"
+            super_color = "#f59e0b"
+            outcome_title = f"{final_disease} (Disputed)"
+            outcome_sub = "Incoming evidence directly conflicts with specimen pathology"
+            posterior_color = "#f59e0b"
+            post_extra = " (Dampened)"
+            dh_display = f"<span style='color: #f59e0b;'>+{ht - h0:.3f} bits (H increased)</span>" if ht > h0 else f"<span style='color: #38bdf8;'>+{delta_h:.3f} bits</span>"
+            footer_note = f"<b>Advisory (Module 8):</b> Acquired clue conflicts with {final_disease}. Bayesian belief dampened to protect clinical diagnostic integrity."
+        elif has_rejection:
+            card_cls = "cert-rejected"
+            cert_super = "EVIDENCEGAIN-X &bull; OPTICAL FILTER GATED"
+            super_color = "#ef4444"
+            outcome_title = f"{final_disease} (Unchanged)"
+            outcome_sub = "Optical quality gate quarantined corrupted evidence"
+            posterior_color = "#94a3b8"
+            post_extra = " (Preserved)"
+            dh_display = "<span style='color: #94a3b8;'>0.000 bits (Preserved)</span>"
+            footer_note = "<b>Advisory (Module 7):</b> Image failed sharpness criteria (Laplacian blur filter). Gated from belief distribution."
+        elif is_sufficient:
+            card_cls = ""
+            cert_super = "EVIDENCEGAIN-X &bull; VERIFIED CLINICAL AUDIT"
+            super_color = "#34d399"
+            outcome_title = final_disease
+            outcome_sub = "Target Folio-Pathology Confirmed"
+            posterior_color = "#34d399"
+            post_extra = ""
+            dh_display = f"<span style='color: #38bdf8;'>+{delta_h:.3f} bits</span>"
+            footer_note = "<b>Validation:</b> Stopping criteria satisfied (H &le; 0.35 bits) &bull; Module 7/8 Security Passed"
+        else:
+            card_cls = "cert-provisional"
+            cert_super = "EVIDENCEGAIN-X &bull; PROVISIONAL AUDIT"
+            super_color = "#38bdf8"
+            outcome_title = f"{final_disease} (Leading)"
+            outcome_sub = "Inquiry in Progress &bull; Sub-Threshold Certainty"
+            posterior_color = "#38bdf8"
+            post_extra = ""
+            dh_display = f"<span style='color: #38bdf8;'>+{delta_h:.3f} bits</span>"
+            footer_note = "<b>Status:</b> Intermediate trajectory &bull; Further evidence recommended for definitive stopping"
+
         render_html(f"""
-        <div class="clinical-certificate">
-            <div class="cert-super">EVIDENCEGAIN-X &bull; VERIFIED CLINICAL AUDIT</div>
-            <div class="cert-disease-name">{final_disease}</div>
-            <div class="cert-disease-sub">Target Folio-Pathology Confirmed</div>
+        <div class="clinical-certificate {card_cls}">
+            <div class="cert-super" style="color: {super_color};">{cert_super}</div>
+            <div class="cert-disease-name">{outcome_title}</div>
+            <div class="cert-disease-sub">{outcome_sub}</div>
             <div class="cert-grid">
                 <div class="cert-cell">
                     <div class="cert-cell-label">CALIBRATED POSTERIOR</div>
-                    <div class="cert-cell-val" style="color: #34d399;">{state['leading_prob']*100:.1f}%</div>
+                    <div class="cert-cell-val" style="color: {posterior_color};">{state['leading_prob']*100:.1f}%{post_extra}</div>
                 </div>
                 <div class="cert-cell">
                     <div class="cert-cell-label">TOTAL HORIZON</div>
@@ -1484,13 +1544,13 @@ if state and len(state["evidence_trail"]) > 0:
                     <div class="cert-cell-val">{h0:.3f} <span style="font-size: 0.72rem; color: #64748b;">bits</span></div>
                 </div>
                 <div class="cert-cell">
-                    <div class="cert-cell-label">ENTROPY REDUCTION &Delta;H</div>
-                    <div class="cert-cell-val" style="color: #38bdf8;">+{delta_h:.3f} <span style="font-size: 0.72rem; color: #64748b;">bits</span></div>
+                    <div class="cert-cell-label">ENTROPY DELTA &Delta;H</div>
+                    <div class="cert-cell-val">{dh_display}</div>
                 </div>
             </div>
             <div class="cert-footer">
                 <div style="margin-bottom: 4px;"><b>Diagnostic Trajectory:</b> <i>{init_lead_name.replace('_', ' ').title()}</i> &rarr; <b style="color: #ffffff;">{final_disease}</b></div>
-                <div><b>Validation:</b> Temperature Scaled (T=1.8928) &bull; Module 7/8 Security Active</div>
+                <div>{footer_note}</div>
             </div>
         </div>
         """)
