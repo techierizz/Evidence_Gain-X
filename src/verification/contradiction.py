@@ -11,6 +11,8 @@ class ContradictionReport:
     observed_shift_direction: str
     penalty_factor: float
     explanation: str
+    is_specimen_mismatch: bool = False
+    mismatch_disease: Optional[str] = None
 
 class ContradictionVerifier:
     def __init__(self, contradiction_threshold: float = 0.40, penalty_scale: float = 0.50):
@@ -25,7 +27,8 @@ class ContradictionVerifier:
         h1_idx: int,
         h2_idx: int,
         classes: List[str],
-        expected_probs_h2: Optional[np.ndarray] = None
+        expected_probs_h2: Optional[np.ndarray] = None,
+        evidence_likelihood: Optional[np.ndarray] = None
     ) -> ContradictionReport:
         delta_exp_h1 = expected_probs - prior_probs
         delta_obs = observed_probs - prior_probs
@@ -49,8 +52,23 @@ class ContradictionVerifier:
         else:
             best_cos = cos1
 
-        contradiction_score = float(np.clip((1.0 - best_cos) / 2.0, 0.0, 1.0))
-        is_contradiction = contradiction_score >= self.contradiction_threshold
+        trajectory_score = float(np.clip((1.0 - best_cos) / 2.0, 0.0, 1.0))
+        is_trajectory_contra = trajectory_score >= self.contradiction_threshold
+
+        is_specimen_mismatch = False
+        mismatch_disease = None
+        mismatch_score = 0.0
+        if evidence_likelihood is not None:
+            ev_top_idx = int(np.argmax(evidence_likelihood))
+            ev_top_prob = float(evidence_likelihood[ev_top_idx])
+            prior_top_prob = float(prior_probs[ev_top_idx])
+            if ev_top_idx != h1_idx and ev_top_idx != h2_idx and prior_top_prob < 0.05 and ev_top_prob >= 0.35:
+                is_specimen_mismatch = True
+                mismatch_disease = classes[ev_top_idx]
+                mismatch_score = float(np.clip(ev_top_prob - prior_top_prob, 0.45, 1.0))
+
+        is_contradiction = is_trajectory_contra or is_specimen_mismatch
+        contradiction_score = max(trajectory_score, mismatch_score)
 
         h1_name = classes[h1_idx]
         h2_name = classes[h2_idx]
@@ -58,7 +76,15 @@ class ContradictionVerifier:
         exp_dir = f"Support {h1_name} or {h2_name}"
         obs_dir = f"Support {classes[int(np.argmax(observed_probs))]}"
 
-        if is_contradiction:
+        if is_specimen_mismatch and mismatch_disease:
+            m_title = mismatch_disease.replace('_', ' ').title()
+            penalty_factor = 0.0
+            explanation = (
+                f"Specimen Mismatch detected (Module 8): Uploaded evidence exhibits primary morphology of "
+                f"'{m_title}' ({evidence_likelihood[ev_top_idx] * 100:.1f}%), which was ruled out on initial specimen "
+                f"observation (prior: {prior_probs[ev_top_idx] * 100:.1f}%). Evidence quarantined to protect diagnostic integrity."
+            )
+        elif is_contradiction:
             penalty_factor = float(1.0 - self.penalty_scale * contradiction_score)
             explanation = (
                 f"Contradiction detected: Acquired evidence shifts belief toward '{obs_dir}' "
@@ -75,5 +101,7 @@ class ContradictionVerifier:
             expected_shift_direction=exp_dir,
             observed_shift_direction=obs_dir,
             penalty_factor=penalty_factor,
-            explanation=explanation
+            explanation=explanation,
+            is_specimen_mismatch=is_specimen_mismatch,
+            mismatch_disease=mismatch_disease
         )

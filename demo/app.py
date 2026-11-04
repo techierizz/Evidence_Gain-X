@@ -1457,12 +1457,12 @@ if state and len(state["evidence_trail"]) > 0:
 
         for item in state["evidence_trail"]:
             act = item.get("action", "ACCEPT")
-            is_rejected = act in ["REJECT", "REJECTED"]
+            is_rejected = act in ["REJECT", "REJECTED", "QUARANTINED"]
             node_cls = "node-rejected" if is_rejected else ""
 
-            badge_color = "#ef4444" if is_rejected else "#10b981"
-            badge_bg = "rgba(239, 68, 68, 0.12)" if is_rejected else "rgba(16, 185, 129, 0.12)"
-            badge_border = "rgba(239, 68, 68, 0.3)" if is_rejected else "rgba(16, 185, 129, 0.3)"
+            badge_color = "#f59e0b" if act == "QUARANTINED" else ("#ef4444" if is_rejected else "#10b981")
+            badge_bg = "rgba(245, 158, 11, 0.12)" if act == "QUARANTINED" else ("rgba(239, 68, 68, 0.12)" if is_rejected else "rgba(16, 185, 129, 0.12)")
+            badge_border = "rgba(245, 158, 11, 0.3)" if act == "QUARANTINED" else ("rgba(239, 68, 68, 0.3)" if is_rejected else "rgba(16, 185, 129, 0.3)")
 
             render_html(f"""
             <div class="audit-step-node {node_cls}">
@@ -1487,7 +1487,13 @@ if state and len(state["evidence_trail"]) > 0:
                 if item.get("reasons"):
                     render_html(f"<div style='font-size: 0.8rem; color: #fca5a5; margin-bottom: 6px;'><b>Gating Rejection:</b> {', '.join(item['reasons'])}</div>")
 
-                if is_rejected:
+                if act == "QUARANTINED":
+                    render_html(f"""
+                    <div class="alert-box alert-ambiguity" style="border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); color: #fde68a; margin-top: 6px;">
+                        <div><b>Specimen Mismatch Quarantined (Module 8):</b> {item.get('contradiction_explanation')}</div>
+                    </div>
+                    """)
+                elif is_rejected:
                     render_html("""
                     <div class="alert-box alert-ambiguity" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.1); color: #fca5a5; margin-top: 6px;">
                         <div><b>Optical Filter Triggered:</b> Image failed sharpness criteria. Gated from Bayesian posterior calculation to prevent distribution poisoning.</div>
@@ -1518,9 +1524,10 @@ if state and len(state["evidence_trail"]) > 0:
         render_html('</div>')
 
     with col_t2:
+        has_quarantine = any(item.get("action") == "QUARANTINED" for item in state["evidence_trail"])
         has_contradiction = any(item.get("contradiction", False) for item in state["evidence_trail"])
         has_rejection = any(item.get("action") in ["REJECT", "REJECTED"] for item in state["evidence_trail"])
-        is_sufficient = (state["entropy"] <= pipeline.stopping_entropy and state["margin"] >= pipeline.stopping_margin and not has_contradiction)
+        is_sufficient = (state["entropy"] <= pipeline.stopping_entropy and state["margin"] >= pipeline.stopping_margin and not has_contradiction and not has_quarantine)
 
         final_disease = state['leading_disease'].replace('_', ' ').title()
         init_lead_idx = int(np.argmax(state["initial_probs"]))
@@ -1531,7 +1538,17 @@ if state and len(state["evidence_trail"]) > 0:
         ht = float(state["entropy"])
         delta_h = max(0.0, h0 - ht)
 
-        if has_contradiction:
+        if has_quarantine:
+            card_cls = "cert-contradiction"
+            cert_super = "EVIDENCEGAIN-X &bull; SPECIMEN MISMATCH QUARANTINED"
+            super_color = "#f59e0b"
+            outcome_title = f"{final_disease} (Preserved)"
+            outcome_sub = "Cross-specimen contamination quarantined by Module 8 guard"
+            posterior_color = "#94a3b8"
+            post_extra = " (Preserved)"
+            dh_display = "<span style='color: #94a3b8;'>0.000 bits (Preserved)</span>"
+            footer_note = "<b>Advisory (Module 8):</b> Uploaded clue shows symptoms of an excluded disease. Quarantined from belief distribution to prevent diagnostic corruption."
+        elif has_contradiction:
             card_cls = "cert-contradiction"
             cert_super = "EVIDENCEGAIN-X &bull; CONTRADICTION DETECTED"
             super_color = "#f59e0b"

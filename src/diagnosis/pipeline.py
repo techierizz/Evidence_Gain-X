@@ -179,8 +179,26 @@ class EvidenceGainXPipeline:
             observed_probs=tentative_p,
             h1_idx=h1_idx,
             h2_idx=h2_idx,
-            classes=self.classes
+            classes=self.classes,
+            evidence_likelihood=ev_likelihood
         )
+
+        if contra_report.is_specimen_mismatch:
+            state["evidence_trail"].append({
+                "step": step_num,
+                "evidence_type": evidence_type,
+                "modality": ev_item.modality,
+                "action": "QUARANTINED",
+                "quality_score": rel_report.quality_score,
+                "reasons": ["specimen_mismatch_incongruence"],
+                "contradiction": True,
+                "contradiction_score": contra_report.contradiction_score,
+                "contradiction_explanation": contra_report.explanation,
+                "entropy_after": state["entropy"],
+                "leading_after": state["leading_disease"],
+                "leading_prob_after": state["leading_prob"]
+            })
+            return state
 
         final_updated_p = self.belief_updater.update_beliefs(
             prior_probs=prior_p,
