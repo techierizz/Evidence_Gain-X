@@ -365,7 +365,7 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("""
+    st.markdown(r"""
         <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">
             <b>Benchmark:</b> PlantVillage PV-Tomato<br>
             <b>Vision Backbone:</b> ResNet-18 (ImageNet Pre-trained)<br>
@@ -709,7 +709,7 @@ with col_right:
         if not rem_cands:
             st.info("All 5 candidate evidence modalities have been exhausted for this episode.")
         elif state["entropy"] <= pipeline.stopping_entropy and state["margin"] >= pipeline.stopping_margin:
-            st.markdown("""
+            st.markdown(r"""
             <div style="padding: 14px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: 10px; text-align: center;">
                 <span style="font-size: 1.5rem;">🎯</span>
                 <div style="font-weight: 700; color: #34d399; font-size: 1rem; margin-top: 4px;">
@@ -891,5 +891,5 @@ if state and len(state["evidence_trail"]) > 0:
         st.markdown(f"**Diagnostic Shift:** *{init_lead_name.replace('_', ' ').title()}* ➔ **{final_disease}**")
         st.markdown(f"**Initial Entropy ($H_0$):** `{h0:.3f} bits`")
         st.markdown(f"**Current Entropy ($H_t$):** `{ht:.3f} bits`")
-        st.markdown(f"**Total Uncertainty Reduction ($\Delta H$):** <span class='stat-pill' style='background: rgba(6, 182, 212, 0.2); color: #38bdf8;'>{delta_h:.3f} bits</span>", unsafe_allow_html=True)
+        st.markdown(rf"**Total Uncertainty Reduction ($\Delta H$):** <span class='stat-pill' style='background: rgba(6, 182, 212, 0.2); color: #38bdf8;'>{delta_h:.3f} bits</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
