@@ -1206,6 +1206,7 @@ with col_right:
 
             with st.expander(f"Acquire Clue: {best_cand.replace('_', ' ').title()}", expanded=True):
                 ev_to_submit = None
+                chosen_modality = best_cand
                 active_case = st.session_state.get("active_case")
 
                 if active_case and best_cand in active_case.available_evidence:
@@ -1213,6 +1214,7 @@ with col_right:
                     render_html(f"<div style='font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;'>Authentic Benchmark Clue: <code>{b_item.evidence_type}</code> ({b_item.modality})</div>")
                     if st.button(f"Acquire Benchmark Observation ({best_cand.replace('_', ' ').title()})", type="primary", use_container_width=True):
                         ev_to_submit = b_item
+                        chosen_modality = best_cand
 
                 render_html("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Stress-Testing Controls</div>")
                 sc_c1, sc_c2 = st.columns(2)
@@ -1224,6 +1226,7 @@ with col_right:
                             data_path_or_content="data/test_samples/sample_blurry.jpg",
                             cost=1.0
                         )
+                        chosen_modality = best_cand
                 with sc_c2:
                     if st.button("Inject Contradictory Leaf (Module 8)", use_container_width=True):
                         ev_to_submit = EvidenceItem(
@@ -1232,34 +1235,145 @@ with col_right:
                             data_path_or_content="data/test_samples/sample_healthy_contradiction.jpg",
                             cost=1.0
                         )
+                        chosen_modality = best_cand
 
-                render_html("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px 0;'>Or Ingest Live Field Clue</div>")
+                render_html("<div style='font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 14px 0 8px 0;'>Interactive Evidence Ingestion</div>")
 
-                if best_cand in ["lesion_closeup", "leaf_underside", "stem_view"]:
-                    live_ev_file = st.file_uploader(f"Upload {best_cand.replace('_', ' ').title()}:", type=["jpg", "png", "jpeg"], key=f"live_{best_cand}")
+                tab_img, tab_weather, tab_symptom = st.tabs(["Upload Leaf Photo", "One-Click Weather", "Visual Symptoms"])
+
+                with tab_img:
+                    render_html("<div style='font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;'>Upload a photographic clue or select a reference sample:</div>")
+                    img_modality = st.selectbox(
+                        "Select Image Perspective:",
+                        ["lesion_closeup", "leaf_underside", "stem_view"],
+                        index=0 if best_cand not in ["leaf_underside", "stem_view"] else ["lesion_closeup", "leaf_underside", "stem_view"].index(best_cand),
+                        format_func=lambda x: x.replace('_', ' ').title(),
+                        key="sb_img_modality"
+                    )
+
+                    s_col1, s_col2 = st.columns(2)
+                    with s_col1:
+                        if st.button("Use Sample: Lesion Close-Up", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type=img_modality,
+                                modality="image",
+                                data_path_or_content="data/test_samples/sample_real_early_blight.jpg",
+                                cost=1.0
+                            )
+                            chosen_modality = img_modality
+                    with s_col2:
+                        if st.button("Use Sample: Leaf Underside", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type=img_modality,
+                                modality="image",
+                                data_path_or_content="data/test_samples/sample_real_septoria.jpg",
+                                cost=1.2
+                            )
+                            chosen_modality = img_modality
+
+                    live_ev_file = st.file_uploader("Or upload your own specimen photo:", type=["jpg", "png", "jpeg"], key="live_user_ev_file")
                     if live_ev_file:
                         live_pil = Image.open(live_ev_file).convert("RGB")
                         st.image(live_pil, width=220)
-                        if st.button("Submit Ingested Image", type="primary"):
+                        if st.button("Submit Ingested Photo", type="primary", use_container_width=True):
                             ev_to_submit = EvidenceItem(
-                                evidence_type=best_cand,
+                                evidence_type=img_modality,
                                 modality="image",
                                 data_path_or_content=live_pil,
                                 cost=1.0
                             )
-                else:
-                    text_input = st.text_area("Field Pathology Description:", value="Dark brown concentric rings with chlorotic yellow halo.")
-                    if st.button("Submit Text Description", type="primary"):
-                        ev_to_submit = EvidenceItem(
-                            evidence_type=best_cand,
-                            modality="text",
-                            data_path_or_content=text_input,
-                            cost=0.5
-                        )
+                            chosen_modality = img_modality
+
+                with tab_weather:
+                    render_html("<div style='font-size: 0.82rem; color: #94a3b8; margin-bottom: 8px;'>Select observed field environmental conditions (no typing needed):</div>")
+                    w_c1, w_c2 = st.columns(2)
+                    with w_c1:
+                        if st.button("Warm & Dry (28°C, low rain)", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="weather_context",
+                                modality="text",
+                                data_path_or_content="warm dry 28c low humidity minimal rain",
+                                cost=0.4
+                            )
+                            chosen_modality = "weather_context"
+                        if st.button("Warm & Humid (24°C, morning dew)", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="weather_context",
+                                modality="text",
+                                data_path_or_content="warm humid 24c heavy dew leaf wetness",
+                                cost=0.4
+                            )
+                            chosen_modality = "weather_context"
+                    with w_c2:
+                        if st.button("Cool & Wet (18°C, continuous rain)", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="weather_context",
+                                modality="text",
+                                data_path_or_content="cool rainy 18c continuous precipitation high humidity",
+                                cost=0.4
+                            )
+                            chosen_modality = "weather_context"
+                        if st.button("Mild & Sunny (Optimal control)", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="weather_context",
+                                modality="text",
+                                data_path_or_content="mild sunny moderate temperature dry clean",
+                                cost=0.4
+                            )
+                            chosen_modality = "weather_context"
+
+                with tab_symptom:
+                    render_html("<div style='font-size: 0.82rem; color: #94a3b8; margin-bottom: 8px;'>Select visible symptoms or write plain everyday notes:</div>")
+                    sym_c1, sym_c2 = st.columns(2)
+                    with sym_c1:
+                        if st.button("Concentric brown target rings", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="symptom_text",
+                                modality="text",
+                                data_path_or_content="dark brown circular concentric rings yellow halo",
+                                cost=0.4
+                            )
+                            chosen_modality = "symptom_text"
+                        if st.button("Tiny dark spots with grey centers", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="symptom_text",
+                                modality="text",
+                                data_path_or_content="small circular spots dark border grey center",
+                                cost=0.4
+                            )
+                            chosen_modality = "symptom_text"
+                    with sym_c2:
+                        if st.button("Dark wet patches with white fuzz", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="symptom_text",
+                                modality="text",
+                                data_path_or_content="water soaked dark lesions white mold underside",
+                                cost=0.4
+                            )
+                            chosen_modality = "symptom_text"
+                        if st.button("Clean green leaves (no spots)", use_container_width=True):
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="symptom_text",
+                                modality="text",
+                                data_path_or_content="healthy green leaves clean foliage no spots",
+                                cost=0.4
+                            )
+                            chosen_modality = "symptom_text"
+
+                    custom_text = st.text_input("Or type plain observation:", placeholder="e.g. leaves have circular dark spots, dry weather")
+                    if st.button("Submit Custom Note", use_container_width=True):
+                        if custom_text.strip():
+                            ev_to_submit = EvidenceItem(
+                                evidence_type="symptom_text",
+                                modality="text",
+                                data_path_or_content=custom_text.strip(),
+                                cost=0.4
+                            )
+                            chosen_modality = "symptom_text"
 
                 if ev_to_submit is not None:
                     with st.spinner("Executing Reliability Gating, Contradiction Verification & Belief Updating..."):
-                        updated_state = pipeline.process_single_evidence(state, best_cand, ev_to_submit)
+                        updated_state = pipeline.process_single_evidence(state, chosen_modality, ev_to_submit)
                         st.session_state["current_state"] = updated_state
                         st.rerun()
 
