@@ -926,17 +926,39 @@ with col_left:
             """)
 
             if not q_check.is_acceptable:
+                st.session_state["current_state"] = {
+                    "initial_probs": np.zeros(len(classes)),
+                    "current_probs": np.zeros(len(classes)),
+                    "entropy": 2.0,
+                    "margin": 0.0,
+                    "leading_disease": "Optical Quality Quarantined",
+                    "leading_prob": 0.0,
+                    "rival_disease": None,
+                    "rival_prob": 0.0,
+                    "top_hypotheses": [],
+                    "full_distribution": {c: 0.0 for c in classes},
+                    "is_ambiguous": True,
+                    "is_optical_rejected": True,
+                    "optical_reasons": q_check.reasons,
+                    "optical_score": q_check.blur_score,
+                    "conflict": None,
+                    "evidence_trail": []
+                }
                 render_html(f"""
-                <div class="alert-box alert-ambiguity" style="border-color: #ef4444; color: #fca5a5; background: rgba(239, 68, 68, 0.1);">
-                    <div><b>Optical Quality Flag:</b> {", ".join(q_check.reasons)}</div>
+                <div class="alert-box alert-ambiguity" style="border-color: #ef4444; color: #fca5a5; background: rgba(239, 68, 68, 0.15); margin-top: 10px;">
+                    <div><b>OPTICAL QUALITY REJECTED (Module 7):</b> {", ".join(q_check.reasons)}</div>
+                    <div style="font-size: 0.8rem; margin-top: 4px;">Diagnosis blocked: System strictly refuses to generate disease predictions on unreadable, blurry, or distorted images.</div>
+                </div>
+                <div style="text-align: center; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; color: #ef4444; background: rgba(239, 68, 68, 0.08); border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.4); margin-top: 8px;">
+                    DIAGNOSIS QUARANTINED: OPTICAL CLEARANCE FAILED
                 </div>
                 """)
-
-            if st.button("Execute Provisional Diagnosis", type="primary", use_container_width=True):
-                st.session_state["current_state"] = pipeline.diagnose_initial(live_pil)
-                st.session_state["active_case"] = None
-                st.session_state["active_preset_name"] = "Live Upload Specimen"
-                st.rerun()
+            else:
+                if st.button("Execute Provisional Diagnosis", type="primary", use_container_width=True):
+                    st.session_state["current_state"] = pipeline.diagnose_initial(live_pil)
+                    st.session_state["active_case"] = None
+                    st.session_state["active_preset_name"] = "Live Upload Specimen"
+                    st.rerun()
         elif st.session_state.get("active_image_path_or_pil"):
             disp_target = st.session_state["active_image_path_or_pil"]
             render_html("""
