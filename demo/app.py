@@ -1,7 +1,19 @@
+import os
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+try:
+    os.chdir(ROOT_DIR)
+except Exception:
+    pass
+
 import streamlit as st
 import numpy as np
 from PIL import Image
-from pathlib import Path
 import json
 import torch
 import pandas as pd
