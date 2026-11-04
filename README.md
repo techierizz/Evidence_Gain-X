@@ -152,39 +152,6 @@ EvidenceGain-X was benchmarked against 6 alternative decision policies across 24
 
 ---
 
-## ☁️ Deployment Guide
-
-### Method 1: Streamlit Community Cloud (Recommended — 100% Free, 1-Click Cloud Hosting)
-
-Streamlit Community Cloud is the standard deployment host for Streamlit projects and **does not require Docker, containers, or server setup**. It natively reads `requirements.txt` and deploys directly from GitHub:
-
-1. Push your latest code to GitHub: `https://github.com/techierizz/Evidence_Gain-X`
-2. Go to **[share.streamlit.io](https://share.streamlit.io/)** and sign in with your GitHub account.
-3. Click **"New app"** (or **"Create app"**):
-   - **Repository:** `techierizz/Evidence_Gain-X`
-   - **Branch:** `main`
-   - **Main file path:** `demo/app.py`
-4. Click **"Deploy!"**
-5. Streamlit Cloud automatically builds your environment and provisions a public HTTPS link (e.g., `https://evidencegain-x.streamlit.app`) accessible from any browser or smartphone.
-
----
-
-### Method 2: Live Zero-Cold-Start Presentation Tunnel (For In-Person Review)
-
-To present live from your computer with zero cloud sleep, zero latency, and instant response times:
-
-1. Start your local Streamlit server:
-   ```bash
-   python -m streamlit run demo/app.py --server.port 8501
-   ```
-2. In a second terminal, launch a secure Cloudflare Tunnel:
-   ```bash
-   npx cloudflared tunnel --url http://localhost:8501
-   ```
-3. Cloudflare generates an instant public HTTPS link that forwards directly to your machine. Evaluators and professors can test the app on their devices while it runs natively on your hardware.
-
----
-
 ## 📁 Repository Structure
 
 ```text
