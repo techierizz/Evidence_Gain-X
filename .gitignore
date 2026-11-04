@@ -1,10 +1,7 @@
-# Virtual environment
 .venv/
 venv/
 ENV/
 env/
-
-# Python cache
 __pycache__/
 *.py[cod]
 *.class
@@ -12,17 +9,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Logs & Temporary files
 *.log
 *.tmp
 .DS_Store
 Thumbs.db
-
-# Large model checkpoints & caches
-checkpoints/
-*.pt
-*.pth
-*.bin
-*.onnx
 data/plantvillage_cache/
+!checkpoints/classifier_best.pt
