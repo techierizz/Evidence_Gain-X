@@ -45,7 +45,7 @@ class CompetingHypothesisTracker:
         margin = float(p_np[sorted_indices[0]] - p_np[sorted_indices[1]])
         eps = 1e-8
         entropy = float(-np.sum(p_np * np.log2(p_np + eps)))
-        is_ambiguous = margin < self.margin_threshold
+        is_ambiguous = (margin < self.margin_threshold) or (entropy > 0.35 and margin < 0.70)
 
         return {
             "leading_disease": self.classes[sorted_indices[0]],

@@ -5,12 +5,7 @@ from pathlib import Path
 import json
 import torch
 import pandas as pd
-
-import importlib
-import src.verification.reliability as rel_mod
-import src.diagnosis.pipeline as pipe_mod
-importlib.reload(rel_mod)
-importlib.reload(pipe_mod)
+import copy
 
 from src.utils.config import load_config
 from src.data.manifest import DatasetManifest, EvidenceItem
@@ -55,7 +50,7 @@ st.markdown("""
         border: 1px solid rgba(52, 211, 153, 0.2);
         border-radius: 18px;
         box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.05);
-        margin-bottom: 2rem;
+        margin-bottom: 1.8rem;
         position: relative;
         overflow: hidden;
     }
@@ -94,7 +89,7 @@ st.markdown("""
         100% { transform: scale(0.95); opacity: 0.8; }
     }
     .hero-title {
-        font-size: 2.4rem;
+        font-size: 2.3rem;
         font-weight: 800;
         letter-spacing: -0.02em;
         background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
@@ -103,9 +98,9 @@ st.markdown("""
         margin: 0 0 0.4rem 0;
     }
     .hero-subtitle {
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         color: #94a3b8;
-        max-width: 850px;
+        max-width: 880px;
         line-height: 1.5;
         margin: 0;
     }
@@ -119,10 +114,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         margin-bottom: 1.4rem;
         backdrop-filter: blur(14px);
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-    .glass-card:hover {
-        border-color: rgba(52, 211, 153, 0.35);
     }
     .card-header {
         font-size: 1.15rem;
@@ -148,16 +139,6 @@ st.markdown("""
         background: rgba(16, 185, 129, 0.2);
         color: #34d399;
         border: 1px solid rgba(16, 185, 129, 0.4);
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 0.82rem;
-        display: inline-block;
-    }
-    .badge-downweight {
-        background: rgba(245, 158, 11, 0.2);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.4);
         padding: 4px 12px;
         border-radius: 6px;
         font-weight: 700;
@@ -229,7 +210,6 @@ st.markdown("""
         color: #ffffff;
         margin-bottom: 3px;
         line-height: 1.2;
-        word-break: normal;
     }
     .kpi-label {
         font-size: 0.72rem;
@@ -265,26 +245,6 @@ st.markdown("""
         border-radius: 16px;
         padding: 1.6rem;
         box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1);
-    }
-
-    /* Streamlit Widget Styling Overrides */
-    div[data-testid="stMetricValue"] {
-        color: #34d399 !important;
-        font-weight: 800 !important;
-    }
-    .stButton>button {
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    .stButton>button[kind="primary"] {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
-    }
-    .stButton>button[kind="primary"]:hover {
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
-        transform: translateY(-1px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -335,6 +295,21 @@ cfg, pipeline, classes, cand_types = load_system_pipeline()
 # Load benchmark manifest
 manifest_path = "data/manifests/dataset_manifest.json"
 manifest = DatasetManifest.load_json(manifest_path) if Path(manifest_path).exists() else None
+case_dict = {c.case_id: c for c in manifest.cases} if manifest else {}
+
+# Session State Initialization
+if "current_state" not in st.session_state:
+    st.session_state["current_state"] = None
+if "active_case" not in st.session_state:
+    st.session_state["active_case"] = None
+if "active_preset_name" not in st.session_state:
+    st.session_state["active_preset_name"] = None
+if "selected_case_id" not in st.session_state:
+    st.session_state["selected_case_id"] = "tomato_early_blight_0001" if manifest else None
+if "active_image_path_or_pil" not in st.session_state:
+    st.session_state["active_image_path_or_pil"] = None
+if "input_source_mode" not in st.session_state:
+    st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
 
 # ==============================================================================
 # SIDEBAR CONTROLS & DIAGNOSTIC CONFIGURATION
@@ -347,7 +322,14 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    input_mode = st.radio("Inference Input Source:", ["Interactive Live Upload", "Authentic Benchmark Gallery"])
+    input_mode = st.radio(
+        "Inference Input Source:",
+        ["Authentic Benchmark Gallery", "Interactive Live Upload"],
+        index=0 if st.session_state["input_source_mode"] == "Authentic Benchmark Gallery" else 1,
+        key="radio_input_mode"
+    )
+    st.session_state["input_source_mode"] = input_mode
+
     max_steps = st.slider("Evidence Budget Horizon ($B$):", 1, 5, cfg["evidence"]["max_budget"])
     pipeline.max_budget = max_steps
     
@@ -355,8 +337,9 @@ with st.sidebar:
     if st.button("🔄 Reset Diagnostic Episode", use_container_width=True):
         st.session_state["current_state"] = None
         st.session_state["active_case"] = None
-        st.session_state["evidence_history"] = []
         st.session_state["active_preset_name"] = None
+        st.session_state["active_image_path_or_pil"] = None
+        st.session_state["selected_case_id"] = "tomato_early_blight_0001" if manifest else None
         st.rerun()
 
     st.markdown("---")
@@ -386,17 +369,10 @@ with st.sidebar:
         <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">
             <b>Benchmark:</b> PlantVillage PV-Tomato<br>
             <b>Vision Backbone:</b> ResNet-18 (ImageNet Pre-trained)<br>
-            <b>Calibration:</b> Temperature Scaling ($T=1.8928$)
+            <b>Calibration:</b> Temperature Scaling ($T=1.8928$)<br>
+            <b>Stopping Entropy:</b> $H \le 0.35$ bits
         </div>
     """, unsafe_allow_html=True)
-
-# Session State Initialization
-if "current_state" not in st.session_state:
-    st.session_state["current_state"] = None
-if "active_case" not in st.session_state:
-    st.session_state["active_case"] = None
-if "active_preset_name" not in st.session_state:
-    st.session_state["active_preset_name"] = None
 
 # ==============================================================================
 # HERO HEADER & TELEMETRY BANNER
@@ -426,34 +402,102 @@ st.markdown("""
 
 p_col1, p_col2, p_col3, p_col4, p_col5, p_col6 = st.columns(6)
 
-preset_to_load = None
-
 with p_col1:
     if st.button("🍂 Early Blight", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_real_early_blight.jpg", "Authentic Early Blight (Alternaria solani)")
+        cid = "tomato_early_blight_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Authentic Early Blight (Alternaria solani)"
+        st.session_state["active_image_path_or_pil"] = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_early_blight.jpg"
+        st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+        st.rerun()
+
 with p_col2:
     if st.button("💧 Late Blight", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_real_late_blight.jpg", "Authentic Late Blight (Phytophthora infestans)")
+        cid = "tomato_late_blight_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Authentic Late Blight (Phytophthora infestans)"
+        st.session_state["active_image_path_or_pil"] = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_late_blight.jpg"
+        st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+        st.rerun()
+
 with p_col3:
     if st.button("🔬 Septoria Spot", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_real_septoria.jpg", "Authentic Septoria Leaf Spot (Look-alike)")
+        cid = "tomato_septoria_leaf_spot_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Authentic Septoria Leaf Spot (Look-alike Ambiguity)"
+        st.session_state["active_image_path_or_pil"] = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_septoria.jpg"
+        st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+        st.rerun()
+
 with p_col4:
     if st.button("🌿 Healthy Leaf", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_real_healthy.jpg", "Authentic Healthy Tomato Foliage")
+        cid = "tomato_healthy_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Authentic Healthy Tomato Foliage"
+        st.session_state["active_image_path_or_pil"] = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_healthy.jpg"
+        st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+        st.rerun()
+
 with p_col5:
     if st.button("🌫️ Blurry Test", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_blurry.jpg", "Scenario C: Heavily Blurry Leaf (Defocus)")
+        # Scenario C: Demonstrates Module 7 Blur Rejection
+        cid = "tomato_septoria_leaf_spot_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Scenario C: Heavily Blurry Leaf (Defocus Rejection)"
+        init_path = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_septoria.jpg"
+        st.session_state["active_image_path_or_pil"] = init_path
+        
+        # 1. Run initial diagnosis
+        init_state = pipeline.diagnose_initial(init_path)
+        # 2. Immediately simulate acquiring a blurry lesion closeup
+        blurry_item = EvidenceItem(
+            evidence_type="lesion_closeup",
+            modality="image",
+            data_path_or_content="data/test_samples/sample_blurry.jpg",
+            cost=1.0
+        )
+        updated_state = pipeline.process_single_evidence(init_state, "lesion_closeup", blurry_item)
+        st.session_state["current_state"] = updated_state
+        st.rerun()
+
 with p_col6:
     if st.button("⚡ Contradiction", use_container_width=True):
-        preset_to_load = ("data/test_samples/sample_healthy_contradiction.jpg", "Scenario B: Contradictory Input")
-
-if preset_to_load:
-    p_path, p_label = preset_to_load
-    if Path(p_path).exists():
-        loaded_img = Image.open(p_path).convert("RGB")
-        st.session_state["current_state"] = pipeline.diagnose_initial(loaded_img)
-        st.session_state["active_case"] = None
-        st.session_state["active_preset_name"] = p_label
+        # Scenario B: Demonstrates Module 8 Contradiction Verification
+        cid = "tomato_early_blight_0001"
+        c_rec = case_dict.get(cid)
+        st.session_state["input_source_mode"] = "Authentic Benchmark Gallery"
+        st.session_state["selected_case_id"] = cid
+        st.session_state["active_case"] = c_rec
+        st.session_state["active_preset_name"] = "Scenario B: Contradictory Input (Wrong Leaf Uploaded)"
+        init_path = c_rec.initial_image_path if c_rec else "data/test_samples/sample_real_early_blight.jpg"
+        st.session_state["active_image_path_or_pil"] = init_path
+        
+        # 1. Run initial diagnosis
+        init_state = pipeline.diagnose_initial(init_path)
+        # 2. Immediately simulate user accidentally uploading a healthy leaf as lesion close-up
+        contradictory_item = EvidenceItem(
+            evidence_type="lesion_closeup",
+            modality="image",
+            data_path_or_content="data/test_samples/sample_healthy_contradiction.jpg",
+            cost=1.0
+        )
+        updated_state = pipeline.process_single_evidence(init_state, "lesion_closeup", contradictory_item)
+        st.session_state["current_state"] = updated_state
         st.rerun()
 
 st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
@@ -467,42 +511,93 @@ with col_left:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown('<div class="card-header"><span>📸</span> 1. Macroscopic Foliar Observation ($X_0$)</div>', unsafe_allow_html=True)
     
-    initial_img = None
-    case_record = None
-
     if st.session_state.get("active_preset_name"):
         st.info(f"Loaded Preset: **{st.session_state['active_preset_name']}**")
 
-    if input_mode == "Interactive Live Upload":
+    curr_input_mode = st.session_state["input_source_mode"]
+
+    if curr_input_mode == "Interactive Live Upload":
         uploaded_file = st.file_uploader("Upload leaf photograph (or capture via field camera):", type=["jpg", "jpeg", "png"])
+        
+        # Quick sample links for live mode
+        st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-top: 4px;'>Or click a web sample:</div>", unsafe_allow_html=True)
+        s_c1, s_c2, s_c3 = st.columns(3)
+        with s_c1:
+            if st.button("Leaf 1 (Septoria)", use_container_width=True):
+                st.session_state["active_image_path_or_pil"] = "data/test_samples/sample_real_septoria.jpg"
+                st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+                st.session_state["active_case"] = None
+                st.session_state["active_preset_name"] = "Live Sample: Septoria Leaf Spot"
+                st.rerun()
+        with s_c2:
+            if st.button("Leaf 2 (Early Blight)", use_container_width=True):
+                st.session_state["active_image_path_or_pil"] = "data/test_samples/sample_real_early_blight.jpg"
+                st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+                st.session_state["active_case"] = None
+                st.session_state["active_preset_name"] = "Live Sample: Early Blight"
+                st.rerun()
+        with s_c3:
+            if st.button("Leaf 3 (Blurry)", use_container_width=True):
+                st.session_state["active_image_path_or_pil"] = "data/test_samples/sample_blurry.jpg"
+                st.session_state["current_state"] = pipeline.diagnose_initial(st.session_state["active_image_path_or_pil"])
+                st.session_state["active_case"] = None
+                st.session_state["active_preset_name"] = "Live Sample: Blurry Defocus"
+                st.rerun()
+
         if uploaded_file is not None:
-            initial_img = Image.open(uploaded_file).convert("RGB")
-            st.image(initial_img, caption="Live Uploaded Specimen", use_container_width=True)
+            live_pil = Image.open(uploaded_file).convert("RGB")
+            st.session_state["active_image_path_or_pil"] = live_pil
+            st.image(live_pil, caption="Live Uploaded Specimen", use_container_width=True)
             
-            # Quality assessment of X0
-            q_check = pipeline.reliability_checker.assess_image_quality(initial_img)
+            # Real-time optical quality analysis
+            q_check = pipeline.reliability_checker.assess_image_quality(live_pil)
             if not q_check.is_acceptable:
                 st.markdown(f'<div class="badge-reject" style="margin-top: 6px;">⚠️ Quality Warning: {", ".join(q_check.reasons)}</div>', unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="badge-accept" style="margin-top: 6px;">✅ Sharp Focus (Laplacian: {q_check.blur_score:.1f})</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="badge-accept" style="margin-top: 6px;">✅ Sharp Focus (Laplacian: {q_check.blur_score:.1f} | Brightness: {q_check.brightness_score:.1f})</div>', unsafe_allow_html=True)
 
             if st.button("🔍 Run Initial Diagnosis", type="primary", use_container_width=True):
-                st.session_state["current_state"] = pipeline.diagnose_initial(initial_img)
+                st.session_state["current_state"] = pipeline.diagnose_initial(live_pil)
                 st.session_state["active_case"] = None
                 st.session_state["active_preset_name"] = "Live User Upload"
                 st.rerun()
+        elif st.session_state.get("active_image_path_or_pil"):
+            disp_target = st.session_state["active_image_path_or_pil"]
+            if isinstance(disp_target, (str, Path)) and Path(disp_target).exists():
+                st.image(str(disp_target), caption="Active Specimen View", use_container_width=True)
+            elif isinstance(disp_target, Image.Image):
+                st.image(disp_target, caption="Active Specimen View", use_container_width=True)
+
     else:
+        # Authentic Benchmark Gallery Mode
         if manifest:
             case_ids = [c.case_id for c in manifest.cases]
-            selected_id = st.selectbox("Select PlantVillage Benchmark Case:", case_ids)
-            case_record = next(c for c in manifest.cases if c.case_id == selected_id)
-            initial_img = Image.open(case_record.initial_image_path)
-            st.image(initial_img, caption=f"Case ID: {case_record.case_id}", use_container_width=True)
-            st.markdown(f"**Ground Truth Disease:** <span class='stat-pill'>{case_record.disease.replace('_', ' ').title()}</span>", unsafe_allow_html=True)
+            sel_default_idx = 0
+            if st.session_state.get("selected_case_id") in case_ids:
+                sel_default_idx = case_ids.index(st.session_state["selected_case_id"])
             
+            selected_id = st.selectbox(
+                "Select PlantVillage Benchmark Case:",
+                case_ids,
+                index=sel_default_idx,
+                key="sb_benchmark_case"
+            )
+            st.session_state["selected_case_id"] = selected_id
+            case_record = case_dict.get(selected_id)
+            st.session_state["active_case"] = case_record
+
+            if case_record and Path(case_record.initial_image_path).exists():
+                initial_img = Image.open(case_record.initial_image_path)
+                st.image(initial_img, caption=f"Case ID: {case_record.case_id}", use_container_width=True)
+                st.markdown(f"**Ground Truth Disease:** <span class='stat-pill'>{case_record.disease.replace('_', ' ').title()}</span>", unsafe_allow_html=True)
+                
+                # Check optical quality of X0
+                q_check = pipeline.reliability_checker.assess_image_quality(case_record.initial_image_path)
+                st.markdown(f'<div class="badge-accept" style="margin-top: 6px;">✅ Sharp Focus (Laplacian: {q_check.blur_score:.1f})</div>', unsafe_allow_html=True)
+
             if st.button("🔍 Run Diagnostic Inquiry", type="primary", use_container_width=True):
                 st.session_state["current_state"] = pipeline.diagnose_initial(case_record.initial_image_path)
-                st.session_state["active_case"] = case_record
+                st.session_state["active_image_path_or_pil"] = case_record.initial_image_path
                 st.session_state["active_preset_name"] = None
                 st.rerun()
 
@@ -618,7 +713,7 @@ with col_right:
             <div style="padding: 14px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: 10px; text-align: center;">
                 <span style="font-size: 1.5rem;">🎯</span>
                 <div style="font-weight: 700; color: #34d399; font-size: 1rem; margin-top: 4px;">
-                    Stopping Criterion Reached ($H < 0.35$ bits)
+                    Stopping Criterion Reached ($H \le 0.35$ bits)
                 </div>
                 <div style="font-size: 0.85rem; color: #cbd5e1;">Diagnostic uncertainty is sufficiently resolved. No further evidence required.</div>
             </div>
@@ -669,15 +764,40 @@ with col_right:
             # Interactive Acquisition Expander
             with st.expander(f"📥 Acquire Requested Evidence: {best_cand.replace('_', ' ').title()}", expanded=True):
                 ev_to_submit = None
-                
                 active_case = st.session_state.get("active_case")
+                
+                # Option A: 1-Click Benchmark Evidence
                 if active_case and best_cand in active_case.available_evidence:
                     b_item = active_case.available_evidence[best_cand]
-                    st.markdown(f"**Benchmark Observation Ready:** `{b_item.evidence_type}` ({b_item.modality})")
-                    if st.button(f"⚡ Use Associated Benchmark Evidence ({best_cand.replace('_', ' ').title()})", type="primary"):
+                    st.markdown(f"**Authentic Benchmark Clue Ready:** `{b_item.evidence_type}` ({b_item.modality})")
+                    if st.button(f"⚡ Use Associated Benchmark Evidence ({best_cand.replace('_', ' ').title()})", type="primary", use_container_width=True):
                         ev_to_submit = b_item
 
-                st.markdown("<div style='margin-top: 10px; font-weight: 600; color: #94a3b8;'>Or upload live evidence observation:</div>", unsafe_allow_html=True)
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
+                # Option B: Stress-Test Quick Buttons
+                st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;'>Adversarial Stress-Testing Controls</div>", unsafe_allow_html=True)
+                sc_c1, sc_c2 = st.columns(2)
+                with sc_c1:
+                    if st.button("🌫️ Test Blur Rejection (Module 7)", use_container_width=True):
+                        ev_to_submit = EvidenceItem(
+                            evidence_type=best_cand,
+                            modality="image",
+                            data_path_or_content="data/test_samples/sample_blurry.jpg",
+                            cost=1.0
+                        )
+                with sc_c2:
+                    if st.button("⚡ Test Contradiction Shield (Module 8)", use_container_width=True):
+                        ev_to_submit = EvidenceItem(
+                            evidence_type=best_cand,
+                            modality="image",
+                            data_path_or_content="data/test_samples/sample_healthy_contradiction.jpg",
+                            cost=1.0
+                        )
+
+                # Option C: User Upload / Text Input
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;'>Or Provide Custom Field Observation</div>", unsafe_allow_html=True)
                 
                 if best_cand in ["lesion_closeup", "leaf_underside", "stem_view"]:
                     live_ev_file = st.file_uploader(f"Upload {best_cand.replace('_', ' ').title()} Image:", type=["jpg", "png", "jpeg"], key=f"live_{best_cand}")
@@ -721,7 +841,7 @@ if state and len(state["evidence_trail"]) > 0:
     with col_t1:
         for item in state["evidence_trail"]:
             act = item.get("action", "ACCEPT")
-            badge = f'<span class="badge-accept">ACCEPT</span>' if act == "ACCEPT" else (f'<span class="badge-downweight">DOWNWEIGHT</span>' if act == "DOWNWEIGHT" else f'<span class="badge-reject">REJECT</span>')
+            badge = f'<span class="badge-accept">ACCEPT</span>' if act == "ACCEPT" else (f'<span class="badge-reject">REJECT</span>')
             
             with st.expander(f"Step {item['step']}: Acquired '{item['evidence_type'].replace('_', ' ').title()}' — Action: {act}", expanded=True):
                 st.markdown(f"**Reliability Gating:** {badge} &nbsp;|&nbsp; Quality Score: `{item['quality_score']:.2f}`", unsafe_allow_html=True)
@@ -771,5 +891,5 @@ if state and len(state["evidence_trail"]) > 0:
         st.markdown(f"**Diagnostic Shift:** *{init_lead_name.replace('_', ' ').title()}* ➔ **{final_disease}**")
         st.markdown(f"**Initial Entropy ($H_0$):** `{h0:.3f} bits`")
         st.markdown(f"**Current Entropy ($H_t$):** `{ht:.3f} bits`")
-        st.markdown(f"**Total Uncertainty Reduction ($\\\\Delta H$):** <span class='stat-pill' style='background: rgba(6, 182, 212, 0.2); color: #38bdf8;'>{delta_h:.3f} bits</span>", unsafe_allow_html=True)
+        st.markdown(f"**Total Uncertainty Reduction ($\Delta H$):** <span class='stat-pill' style='background: rgba(6, 182, 212, 0.2); color: #38bdf8;'>{delta_h:.3f} bits</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
