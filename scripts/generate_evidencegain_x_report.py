@@ -9,6 +9,8 @@ from reportlab.platypus import (
 )
 from reportlab.pdfgen import canvas
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+import matplotlib.pyplot as plt
+from PIL import Image as PILImage
 
 class CustomReportCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
@@ -39,15 +41,83 @@ class CustomReportCanvas(canvas.Canvas):
             self.setLineWidth(0.6)
             self.line(48, 746, 564, 746)
 
-            self.drawString(48, 30, "ECS-II EvidenceGain-X")
-            self.drawRightString(564, 30, f"Page {self._pageNumber}")
-            self.setStrokeColor(colors.HexColor("#cbd5e1"))
-            self.setLineWidth(0.5)
-            self.line(48, 40, 564, 40)
-
         self.restoreState()
 
+def pre_render_equations():
+    eq_dir = Path("results/equations")
+    eq_dir.mkdir(parents=True, exist_ok=True)
+
+    eqs = {
+        'eq_2_1': r"\sigma(\mathbf{z})_i = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}} \qquad \mathrm{(Eq.\ 2.1)}",
+        'eq_5_1': r"P(\theta_c \mid X_0) = \frac{\exp(z_c / T)}{\sum_{j=1}^K \exp(z_j / T)}, \quad T = 1.8928 \qquad \mathrm{(Eq.\ 5.1)}",
+        'eq_5_2': r"H(P) = -\sum_{c=1}^K P(\theta_c) \log_2 P(\theta_c), \quad \Delta p = P_{(1)} - P_{(2)} \qquad \mathrm{(Eq.\ 5.2)}",
+        'eq_5_3': r"D_{\mathrm{JS}}(P_1 \parallel P_2) = \frac{1}{2} D_{\mathrm{KL}}(P_1 \parallel M) + \frac{1}{2} D_{\mathrm{KL}}(P_2 \parallel M), \quad M = \frac{1}{2}(P_1 + P_2) \qquad \mathrm{(Eq.\ 5.3)}",
+        'eq_5_4': r"e^* = \operatorname{argmax}_{e \in \mathcal{E}} \left[ \alpha \cdot D_{\mathrm{JS}}(P_1 \parallel P_2) + \beta \cdot \mathbf{E}[\Delta H(e)] - \lambda \cdot \mathrm{Cost}(e) \right] \qquad \mathrm{(Eq.\ 5.4)}",
+        'eq_5_5': r"\nabla^2 I = \frac{\partial^2 I}{\partial x^2} + \frac{\partial^2 I}{\partial y^2}, \quad \sigma^2(I) = \frac{1}{N}\sum_{x,y} \left(\nabla^2 I(x,y) - \mu\right)^2 \qquad \mathrm{(Eq.\ 5.5)}",
+        'eq_5_6': r"\cos(\Delta_{\mathrm{obs}}, \Delta_{\mathrm{exp}}) = \frac{\Delta_{\mathrm{obs}} \cdot \Delta_{\mathrm{exp}}}{\|\Delta_{\mathrm{obs}}\| \|\Delta_{\mathrm{exp}}\|}, \quad S_{\mathrm{contra}} = \frac{1 - \max(\cos_1, \cos_2)}{2} \qquad \mathrm{(Eq.\ 5.6)}",
+        'eq_5_7': r"P(\theta \mid e) \propto P(\theta) \cdot \left[L(e \mid \theta)\right]^\gamma, \quad \gamma = \operatorname{clip}(q \cdot \rho, 0.05, 1.5) \qquad \mathrm{(Eq.\ 5.7)}"
+    }
+
+    plt.rcParams['mathtext.fontset'] = 'cm'
+
+    for name, formula in eqs.items():
+        out_file = eq_dir / f"{name}.png"
+        fig = plt.figure(figsize=(10, 1.2))
+        fig.patch.set_alpha(0.0)
+        ax = fig.add_axes([0, 0, 1, 1])
+        ax.axis('off')
+        ax.patch.set_alpha(0.0)
+        math_str = f"${formula}$"
+        ax.text(0.5, 0.5, math_str, fontsize=15, ha='center', va='center', color='#0f172a')
+        fig.savefig(out_file, dpi=300, transparent=True)
+        plt.close(fig)
+
+        with PILImage.open(out_file) as im:
+            bbox = im.getbbox()
+            if bbox:
+                pad = 10
+                crop_box = (
+                    max(0, bbox[0] - pad),
+                    max(0, bbox[1] - pad),
+                    min(im.width, bbox[2] + pad),
+                    min(im.height, bbox[3] + pad)
+                )
+                cropped = im.crop(crop_box)
+                cropped.save(out_file)
+
+def make_equation_flowable(img_path, target_height=None, max_width=490, target_scale=0.78):
+    with PILImage.open(img_path) as p_img:
+        w_px, h_px = p_img.size
+
+    natural_w = w_px * 72.0 / 300.0
+    natural_h = h_px * 72.0 / 300.0
+
+    draw_w = natural_w * target_scale
+    draw_h = natural_h * target_scale
+
+    if draw_w > max_width:
+        reduction = max_width / draw_w
+        draw_w = max_width
+        draw_h = draw_h * reduction
+
+    img = Image(str(img_path))
+    img.drawHeight = draw_h
+    img.drawWidth = draw_w
+
+    t = Table([[img]], colWidths=[516])
+    t.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    return t
+
 def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
+    pre_render_equations()
+
     doc = SimpleDocTemplate(
         filename,
         pagesize=letter,
@@ -66,9 +136,6 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
     TABLE_HEADER_BG = colors.HexColor("#0f2d59")
     TABLE_ALT_BG = colors.HexColor("#e8f4d9")
     TABLE_BORDER = colors.HexColor("#cbd5e1")
-    ALERT_RED = colors.HexColor("#b91c1c")
-    ALERT_AMBER = colors.HexColor("#b45309")
-    ALERT_GREEN = colors.HexColor("#15803d")
 
     title_univ = ParagraphStyle(
         'UnivHeader',
@@ -100,7 +167,7 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         leading=18,
         textColor=DARK_TEXT,
         alignment=TA_CENTER,
-        spaceAfter=28
+        spaceAfter=26
     )
 
     proj_title = ParagraphStyle(
@@ -122,7 +189,7 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         leading=15.5,
         textColor=MUTED_TEXT,
         alignment=TA_CENTER,
-        spaceAfter=28
+        spaceAfter=26
     )
 
     submitted_by = ParagraphStyle(
@@ -189,7 +256,7 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         leading=14,
         textColor=DARK_TEXT,
         alignment=TA_LEFT,
-        spaceBefore=8,
+        spaceBefore=7,
         spaceAfter=3
     )
 
@@ -198,10 +265,10 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         parent=styles['Normal'],
         fontName='Times-Roman',
         fontSize=9.2,
-        leading=12.8,
+        leading=12.7,
         textColor=DARK_TEXT,
         alignment=TA_JUSTIFY,
-        spaceAfter=5
+        spaceAfter=4.5
     )
 
     body_bullet = ParagraphStyle(
@@ -209,7 +276,7 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         parent=styles['Normal'],
         fontName='Times-Roman',
         fontSize=9.2,
-        leading=12.8,
+        leading=12.7,
         textColor=DARK_TEXT,
         leftIndent=15,
         firstLineIndent=-10,
@@ -556,9 +623,12 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
 
     story.append(Paragraph("2.3 Softmax Hallucination on Degraded Specimen Imagery", sec_heading))
     story.append(Paragraph(
-        "Standard vision backbones apply the Softmax activation function over final classification logits: "
-        "$$\\sigma(\\mathbf{z})_i = \\frac{e^{z_i}}{\\sum_{j=1}^K e^{z_j}}$$"
-        "Because Softmax enforces &sum; &sigma;(z)<sub>i</sub> = 1, it cannot express 'unknown' or 'corrupted input.' When smallholder farmers capture "
+        "Standard vision backbones apply the Softmax activation function over final classification logits to map real-valued scores into a normalized probability distribution:",
+        body_just
+    ))
+    story.append(make_equation_flowable("results/equations/eq_2_1.png", target_height=20))
+    story.append(Paragraph(
+        "Because Softmax enforces &sum; &sigma;(<b>z</b>)<sub>i</sub> = 1, it cannot express 'unknown' or 'corrupted input.' When smallholder farmers capture "
         "defocused, motion-blurred, or underexposed photographs in the field, high-frequency textural features are destroyed. The CNN maps the residual "
         "green color distribution to arbitrary high-confidence predictions (e.g., assigning 89.5% Late Blight to an out-of-focus blur). This represents a "
         "critical safety hazard, deceiving farmers into applying hazardous chemical treatments to healthy crops.",
@@ -651,14 +721,17 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
     story.append(Paragraph(
         "Let the disease pathology space be &Theta; = {&theta;<sub>1</sub>, ..., &theta;<sub>K</sub>} with K = 4. "
         "Given an initial macroscopic foliar specimen photograph X<sub>0</sub>, the deep vision backbone f<sub>&phi;</sub> extracts feature representation "
-        "<b>h</b><sub>0</sub> &in; &reals;<sup>512</sup> and outputs raw classification logits <b>z</b> = W<b>h</b><sub>0</sub> + b.",
+        "<b>h</b><sub>0</sub> &in; <b>R</b><sup>512</sup> and outputs raw classification logits <b>z</b> = W<b>h</b><sub>0</sub> + b.",
         body_just
     ))
 
     story.append(Paragraph("5.2 Temperature Scaling Calibration", sec_heading))
     story.append(Paragraph(
-        "To correct the well-documented overconfidence of deep neural networks, logits are calibrated using Platt temperature scaling: "
-        "$$P(\\theta_c \\mid X_0) = \\frac{\\exp(z_c / T)}{\\sum_{j=1}^K \\exp(z_j / T)}$$"
+        "To correct the well-documented overconfidence of deep neural networks, logits are calibrated using Platt temperature scaling:",
+        body_just
+    ))
+    story.append(make_equation_flowable("results/equations/eq_5_1.png", target_height=20))
+    story.append(Paragraph(
         "where T &gt; 0 is optimized via negative log-likelihood on an independent validation set. In EvidenceGain-X, the calibrated temperature is "
         "<b>T = 1.8928</b>, ensuring that class probabilities accurately reflect empirical accuracy.",
         body_just
@@ -666,81 +739,83 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
 
     story.append(Paragraph("5.3 Uncertainty Quantification and Stopping Rules", sec_heading))
     story.append(Paragraph(
-        "Diagnostic uncertainty across class distribution P is quantified via Shannon Entropy: "
-        "$$H(P) = -\\sum_{c=1}^K P(\\theta_c) \\log_2 P(\\theta_c)$$"
-        "and the decision margin &Delta;p = P<sub>(1)</sub> - P<sub>(2)</sub> between the leading hypothesis H<sub>1</sub> and rival hypothesis H<sub>2</sub>. "
-        "Active inquiry terminates if and only if: "
-        "$$H(P) \\le \\tau_H \\quad (0.35\\text{ bits}) \\quad \\land \\quad \\Delta p \\ge \\tau_m \\quad (0.40)$$ "
+        "Diagnostic uncertainty across class distribution P is quantified via Shannon Entropy and top-margin &Delta;p:",
+        body_just
+    ))
+    story.append(make_equation_flowable("results/equations/eq_5_2.png", target_height=18))
+    story.append(Paragraph(
+        "Active inquiry terminates if and only if: H(P) &le; &tau;<sub>H</sub> (0.35 bits) and &Delta;p &ge; &tau;<sub>m</sub> (0.40). "
         "If H(P) &gt; &tau;<sub>H</sub>, the system declares active inquiry required and triggers the Counterfactual Planner.",
         body_just
     ))
 
     story.append(Paragraph("5.4 Counterfactual Outcome Simulation", sec_heading))
     story.append(Paragraph(
-        "For each available candidate evidence clue e &in; &Escr;, the system simulates hypothetical belief updates under competing hypotheses H<sub>1</sub> and H<sub>2</sub>: "
-        "$$P(y \\mid e, H_1) = \\text{SimulateUpdate}(P, e, H_1), \\quad P(y \\mid e, H_2) = \\text{SimulateUpdate}(P, e, H_2)$$"
-        "The separability between competing futures is measured using the symmetric <b>Jensen-Shannon Divergence</b>: "
-        "$$D_{JS}(P_1 \\parallel P_2) = \\frac{1}{2} D_{KL}(P_1 \\parallel M) + \\frac{1}{2} D_{KL}(P_2 \\parallel M), \\quad M = \\frac{1}{2}(P_1 + P_2)$$ "
-        "where D<sub>KL</sub>(P &parallel; Q) = &sum; P(i) log<sub>2</sub>(P(i) / Q(i)).",
+        "For each available candidate evidence clue e &in; <b>E</b>, hypothetical updates are simulated under competing hypotheses H<sub>1</sub> and H<sub>2</sub>. "
+        "The divergence between competing futures is measured using the symmetric <b>Jensen-Shannon Divergence</b>:",
         body_just
     ))
+    story.append(make_equation_flowable("results/equations/eq_5_3.png", target_height=18))
 
     story.append(Paragraph("5.5 Net Policy Utility Optimization", sec_heading))
     story.append(Paragraph(
-        "The active selector identifies the globally optimal next-best evidence query e<sup>*</sup> by solving: "
-        "$$e^* = \\operatorname*{arg\\,max}_{e \\in \\mathcal{E}} \\left[ \\alpha \\cdot D_{JS}(P_1 \\parallel P_2) + \\beta \\cdot \\mathbb{E}[\\Delta H(e)] - \\lambda \\cdot \\text{Cost}(e) \\right]$$"
-        "with calibrated weighting coefficients &alpha; = 1.0, &beta; = 1.0, &lambda; = 0.5. This mathematical formulation strictly favors cheap, highly discriminative clues.",
+        "The active selector identifies the globally optimal next-best evidence query e<sup>*</sup> by solving the cost-aware Net Policy Utility optimization:",
         body_just
     ))
+    story.append(make_equation_flowable("results/equations/eq_5_4.png", target_height=20))
 
     story.append(PageBreak())
 
     # ==================== PAGE 10: METHODOLOGY (CONTD) & TABLES ====================
     story.append(Paragraph("5.6 Cyber-Physical Verification Defenses (Modules 7 and 8)", sec_heading))
     story.append(Paragraph(
-        "<b>Module 7 Optical Quality Gating:</b> Before evidence ingestion, the image is converted to grayscale I and convolved with the 3&times;3 discrete Laplacian operator: "
-        "$$\\nabla^2 I = \\frac{\\partial^2 I}{\\partial x^2} + \\frac{\\partial^2 I}{\\partial y^2}, \\quad \\text{Var}(\\nabla^2 I) = \\frac{1}{N}\\sum (\\nabla^2 I - \\mu)^2$$ "
-        "If Var(&nabla;<sup>2</sup> I) &lt; 80.0 &sigma;<sup>2</sup> or mean luminance &mu;<sub>L</sub> &notin; [30, 240] cd/m<sup>2</sup>, the image is marked <b>REJECTED</b>, "
-        "bypassing Bayesian updating entirely to prevent distribution poisoning.",
+        "<b>Module 7 Optical Quality Gating:</b> Before evidence ingestion, the image is convolved with the discrete Laplacian operator:",
+        body_just
+    ))
+    story.append(make_equation_flowable("results/equations/eq_5_5.png", target_height=18))
+    story.append(Paragraph(
+        "If Var(&nabla;<sup>2</sup> I) &lt; 80.0 &sigma;<sup>2</sup> or luminance &mu;<sub>L</sub> outside [30, 240] cd/m<sup>2</sup>, the image is marked <b>REJECTED</b>.",
         body_just
     ))
     story.append(Paragraph(
-        "<b>Module 8 Contradiction & Specimen Mismatch Guard:</b> When valid evidence likelihood L(e) arrives, the system verifies directional consistency. "
-        "First, it computes the cosine alignment between observed shift &Delta;<sub>obs</sub> = P<sub>tentative</sub> - P<sub>prior</sub> and expected shifts &Delta;<sub>exp</sub>(H<sub>1</sub>), &Delta;<sub>exp</sub>(H<sub>2</sub>): "
-        "$$\\cos(\\Delta_{\\text{obs}}, \\Delta_{\\text{exp}}) = \\frac{\\Delta_{\\text{obs}} \\cdot \\Delta_{\\text{exp}}}{\\|\\Delta_{\\text{obs}}\\| \\|\\Delta_{\\text{exp}}\\|}, \\quad S_{\\text{contra}} = \\frac{1 - \\max(\\cos_1, \\cos_2)}{2}$$ "
-        "Second, it executes the <b>Specimen Incongruence Check</b>: if the top disease identified by the evidence &theta;<sub>ev</sub> &notin; {H<sub>1</sub>, H<sub>2</sub>}, "
-        "had P(&theta;<sub>ev</sub> &mid; X<sub>0</sub>) &lt; 0.05 on the original leaf, but exhibits L(&theta;<sub>ev</sub> &mid; e) &ge; 0.35, the evidence is marked <b>QUARANTINED</b>. "
-        "Posterior probabilities remain preserved at the prior state, preventing cross-specimen contamination from hijacking the diagnosis.",
+        "<b>Module 8 Contradiction & Specimen Mismatch Guard:</b> Directional consistency is checked via cosine alignment against counterfactual plans:",
         body_just
     ))
+    story.append(make_equation_flowable("results/equations/eq_5_6.png", target_height=18))
+    story.append(Paragraph(
+        "When foreign pathologies are detected (&theta;<sub>ev</sub> not in {H<sub>1</sub>, H<sub>2</sub>} with prior &lt; 0.05 and evidence &ge; 0.35), "
+        "the clue is <b>QUARANTINED</b>, preserving prior beliefs. Valid evidence updates the posterior via reliability weighting &gamma;:",
+        body_just
+    ))
+    story.append(make_equation_flowable("results/equations/eq_5_7.png", target_height=18))
 
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 2))
     story.append(Paragraph("<b>Table 5.1: Mathematical Formulation and Operational Parameters of the 9 Modules</b>", sec_heading))
 
     math_table_data = [
         [Paragraph("<b>Module</b>", table_cell_head), Paragraph("<b>Governing Mathematical Formulation</b>", table_cell_head), Paragraph("<b>Calibrated Parameter / Threshold</b>", table_cell_head)],
-        [Paragraph("M1: ResNet-18", table_cell_bold), Paragraph("h = ResNet18(X), &theta; &in; &reals;<sup>512</sup>", table_cell), Paragraph("Weights: ImageNet Pretrained", table_cell)],
+        [Paragraph("M1: ResNet-18", table_cell_bold), Paragraph("h = ResNet18(X), h &in; <b>R</b><sup>512</sup>", table_cell), Paragraph("Weights: ImageNet Pretrained", table_cell)],
         [Paragraph("M2: Calibration", table_cell_bold), Paragraph("P(&theta;<sub>c</sub>) = softmax(z<sub>c</sub> / T)", table_cell), Paragraph("Platt Temp: T = 1.8928", table_cell)],
-        [Paragraph("M3: Ambiguity", table_cell_bold), Paragraph("H(P) = -&sum; P log<sub>2</sub> P, &Delta;p = p<sub>1</sub> - p<sub>2</sub>", table_cell), Paragraph("&tau;<sub>H</sub> = 0.35 bits, &tau;<sub>m</sub> = 0.40", table_cell)],
-        [Paragraph("M5: Planning", table_cell_bold), Paragraph("D<sub>JS</sub>(P<sub>1</sub> &parallel; P<sub>2</sub>) = 0.5 D<sub>KL</sub>(P<sub>1</sub>&parallel;M) + 0.5 D<sub>KL</sub>(P<sub>2</sub>&parallel;M)", table_cell), Paragraph("Competing targets: H<sub>1</sub> vs H<sub>2</sub>", table_cell)],
+        [Paragraph("M3: Ambiguity", table_cell_bold), Paragraph("H(P) = -&sum; P log<sub>2</sub> P, &Delta;p = p<sub>(1)</sub> - p<sub>(2)</sub>", table_cell), Paragraph("&tau;<sub>H</sub> = 0.35 bits, &tau;<sub>m</sub> = 0.40", table_cell)],
+        [Paragraph("M5: Planning", table_cell_bold), Paragraph("D<sub>JS</sub>(P<sub>1</sub> || P<sub>2</sub>) = 0.5 D<sub>KL</sub>(P<sub>1</sub>||M) + 0.5 D<sub>KL</sub>(P<sub>2</sub>||M)", table_cell), Paragraph("Competing targets: H<sub>1</sub> vs H<sub>2</sub>", table_cell)],
         [Paragraph("M6: Utility", table_cell_bold), Paragraph("U(e) = &alpha; D<sub>JS</sub> + &beta; EIG - &lambda; Cost", table_cell), Paragraph("&alpha; = 1.0, &beta; = 1.0, &lambda; = 0.5", table_cell)],
         [Paragraph("M7: Blur Gate", table_cell_bold), Paragraph("&sigma;<sup>2</sup> = Var(&nabla;<sup>2</sup> I), &mu;<sub>L</sub> = mean(Luminance)", table_cell), Paragraph("&sigma;<sup>2</sup> &ge; 80.0, &mu;<sub>L</sub> &in; [30, 240]", table_cell)],
         [Paragraph("M8: Specimen Guard", table_cell_bold), Paragraph("S<sub>contra</sub> = (1 - max(cos<sub>1</sub>, cos<sub>2</sub>)) / 2", table_cell), Paragraph("S<sub>contra</sub> &ge; 0.40 &rarr; Quarantined", table_cell)],
-        [Paragraph("M9: Bayes Update", table_cell_bold), Paragraph("P(&theta; &mid; e) &prop; P(&theta;) &middot; [L(e &mid; &theta;)]<sup>&gamma;</sup>", table_cell), Paragraph("&gamma; = clip(q &middot; &rho;, 0.05, 1.5)", table_cell)],
+        [Paragraph("M9: Bayes Update", table_cell_bold), Paragraph("P(&theta; | e) &prop; P(&theta;) &middot; [L(e | &theta;)]<sup>&gamma;</sup>", table_cell), Paragraph("&gamma; = clip(q &middot; &rho;, 0.05, 1.5)", table_cell)],
     ]
     m_table = Table(math_table_data, colWidths=[90, 250, 160])
     m_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.8),
         ('GRID', (0, 0), (-1, -1), 0.5, TABLE_BORDER),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
     ]))
     story.append(m_table)
 
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 3))
     story.append(Paragraph("<b>Table 5.2: Six-Phase Plan of Action and Developmental Milestones</b>", sec_heading))
 
     plan_data = [
@@ -754,8 +829,8 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.8),
         ('GRID', (0, 0), (-1, -1), 0.5, TABLE_BORDER),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TABLE_ALT_BG, colors.white]),
     ]))
@@ -795,12 +870,12 @@ def build_pdf(filename="EvidenceGain_X_Project_Report.pdf"):
         body_just
     ))
 
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
     if Path("results/figures/figure_signal_flow.png").exists():
-        story.append(Image("results/figures/figure_signal_flow.png", width=490, height=115))
+        story.append(Image("results/figures/figure_signal_flow.png", width=490, height=110))
         story.append(Paragraph("Figure 6.2: Signal Path Flow and Hardware Interfacing Architecture", fig_cap))
 
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
     story.append(Paragraph("7. IMPLEMENTATION", ch_heading))
     story.append(Paragraph("7.1 Software Environment and Framework Stack", sec_heading))
     story.append(Paragraph(
