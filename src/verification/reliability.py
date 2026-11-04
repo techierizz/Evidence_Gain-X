@@ -3,7 +3,13 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from PIL import Image
 import numpy as np
-import cv2
+
+try:
+    import cv2
+    HAS_CV2 = True
+except (ImportError, Exception):
+    cv2 = None
+    HAS_CV2 = False
 
 @dataclass
 class ReliabilityReport:
@@ -29,12 +35,15 @@ class EvidenceReliabilityChecker:
         gray = None
 
         if isinstance(image_input, Image.Image):
-            gray = np.array(image_input.convert("L"))
+            gray = np.array(image_input.convert("L"), dtype=np.float64)
         elif isinstance(image_input, np.ndarray):
             if image_input.ndim == 3:
-                gray = cv2.cvtColor(image_input, cv2.COLOR_RGB2GRAY)
+                if HAS_CV2:
+                    gray = cv2.cvtColor(image_input, cv2.COLOR_RGB2GRAY).astype(np.float64)
+                else:
+                    gray = np.dot(image_input[...,:3], [0.2989, 0.5870, 0.1140]).astype(np.float64)
             else:
-                gray = image_input
+                gray = image_input.astype(np.float64)
         elif isinstance(image_input, (str, Path)):
             p = Path(image_input)
             if not p.exists():
@@ -46,17 +55,31 @@ class EvidenceReliabilityChecker:
                     brightness_score=0.0,
                     reasons=["Image file not found on disk"]
                 )
-            img_bgr = cv2.imread(str(p))
-            if img_bgr is None:
-                return ReliabilityReport(
-                    is_acceptable=False,
-                    quality_score=0.0,
-                    action="REJECT",
-                    blur_score=0.0,
-                    brightness_score=0.0,
-                    reasons=["Corrupt or unreadable image format"]
-                )
-            gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+            if HAS_CV2:
+                img_bgr = cv2.imread(str(p))
+                if img_bgr is None:
+                    return ReliabilityReport(
+                        is_acceptable=False,
+                        quality_score=0.0,
+                        action="REJECT",
+                        blur_score=0.0,
+                        brightness_score=0.0,
+                        reasons=["Corrupt or unreadable image format"]
+                    )
+                gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY).astype(np.float64)
+            else:
+                try:
+                    pil_img = Image.open(p)
+                    gray = np.array(pil_img.convert("L"), dtype=np.float64)
+                except Exception:
+                    return ReliabilityReport(
+                        is_acceptable=False,
+                        quality_score=0.0,
+                        action="REJECT",
+                        blur_score=0.0,
+                        brightness_score=0.0,
+                        reasons=["Corrupt or unreadable image format"]
+                    )
         else:
             return ReliabilityReport(
                 is_acceptable=False,
@@ -67,7 +90,11 @@ class EvidenceReliabilityChecker:
                 reasons=[f"Unsupported image input type: {type(image_input)}"]
             )
 
-        blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        if HAS_CV2:
+            blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        else:
+            from scipy import ndimage
+            blur_score = float(ndimage.laplace(gray).var())
 
         mean_brightness = float(np.mean(gray))
 
@@ -133,4 +160,3 @@ class EvidenceReliabilityChecker:
                 brightness_score=128.0,
                 reasons=[]
             )
-
