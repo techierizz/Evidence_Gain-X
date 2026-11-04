@@ -31,19 +31,19 @@ Conventional crop disease applications ask a single, passive question: **"Given 
 A user takes a photograph, and a convolutional neural network (CNN) outputs a classification.
 
 **Why this paradigm fails in real-world agriculture:**
-1. **Morphological Look-Alikes:** In early vegetative stages, distinct pathologies present near-identical foliar lesions. For example, **Early Blight** (*Alternaria solani*) and **Septoria Leaf Spot** (*Septoria lycopersici*) both manifest as brown circular spots. Standard single-shot classifiers are forced to make uncalibrated guesses along ambiguous boundaries.
-2. **Hidden Diagnostic Discriminators:** The decisive diagnostic symptom is often occluded (e.g., downy fungal sporulation of **Late Blight** situated exclusively on the abaxial leaf underside, or petiole cankers on the stem). A single macroscopic image cannot observe what is physically concealed.
-3. **Softmax Hallucination on Blurry Images:** Standard CNNs (ResNet, MobileNet) normalize outputs via Softmax, which mathematically forces outputs to sum to 100%. When presented with out-of-focus, blurry, or overexposed images, passive models hallucinate high confidence (e.g., 89.5% Late Blight) on meaningless green noise.
-4. **Vulnerability to Contradictory Data:** When prompted for secondary evidence, farmers may inadvertently photograph an adjacent healthy leaf or a different plant. Conventional multi-modal networks fuse conflicting signals, poisoning the diagnostic posterior.
+1. **Morphological Look-Alikes:** In early vegetative stages, distinct pathologies present near-identical foliar lesions. For example, **Early Blight** (*Alternaria solani*) and **Septoria Leaf Spot** (*Septoria lycopersici*) both manifest as circular brownish necrotic lesions. Standard single-shot classifiers make uncalibrated, high-entropy guesses along ambiguous boundaries.
+2. **Hidden Diagnostic Discriminators:** The decisive diagnostic symptom is frequently occluded from a single angle (e.g., downy fungal sporulation of **Late Blight** located exclusively on the abaxial leaf underside, or petiole lesions on the stem). A single macroscopic image cannot observe what is physically concealed.
+3. **Softmax Hallucination on Degraded Images:** Standard CNNs (ResNet, MobileNet) normalize output logits via Softmax, which mathematically forces predictions to sum to 100%. When presented with out-of-focus, blurry, or overexposed images, passive models hallucinate high confidence (e.g., 89.5% Late Blight) on meaningless green blur.
+4. **Cross-Specimen Contamination & Contradiction:** When asked for secondary evidence, users often upload a different leaf from an adjacent plant or an unrelated pathology. Conventional multi-modal systems blindly multiply beliefs or average features, allowing contradictory signals to hijack the diagnostic posterior.
 
 ---
 
 ### The EvidenceGain-X Solution: Active Counterfactual Diagnosis
 EvidenceGain-X acts as an **autonomous clinical diagnostic agent**:
-1. **Provisional Hypothesis Tracking:** Analyzes the initial foliar observation ($X_0$). If confidence is decisive, it stops. If look-alike ambiguity is detected ($P(h_1) \approx P(h_2)$), it identifies the competing rival pathologies.
-2. **Goal-Directed Evidence Selection ($e^*$):** Calculates the **Expected Information Gain (EIG)** across candidate modalities (lesion zoom, abaxial underside, stem view, weather context, field symptoms) to recommend the single most cost-effective discriminator.
-3. **Optical Quality Gating (Module 7):** Pre-screen inputs via Laplacian variance ($\text{Var}(\nabla^2 I) \ge 80.0\ \sigma^2$) and luminance. **Strictly blocks diagnosis on blurry, dark, or distorted images** to eliminate AI hallucination.
-4. **Contradiction Verification (Module 8):** Checks whether incoming evidence aligns with planned counterfactual trajectories. If a user uploads a healthy leaf into a diseased episode, Module 8 flags the conflict and dampens confidence to safeguard clinical integrity.
+1. **Provisional Hypothesis Tracking:** Evaluates the initial foliar observation ($X_0$) through Platt-scaled temperature calibration. If confidence is decisive, it stops. If look-alike ambiguity is detected ($P(h_1) \approx P(h_2)$), it identifies the competing rival pair and initiates active inquiry.
+2. **Goal-Directed Evidence Selection ($e^*$):** Computes **Expected Information Gain (EIG)** and Jensen-Shannon divergence across candidate modalities (lesion zoom, abaxial underside, stem view, weather context, field symptoms) to recommend the single most cost-effective discriminator.
+3. **Optical Quality Gating (Module 7):** Pre-screens both initial specimens and subsequent clues via Laplacian variance ($\text{Var}(\nabla^2 I) \ge 80.0\ \sigma^2$) and luminance telemetry. **Strictly blocks diagnosis on blurry, dark, or distorted images** to eliminate AI hallucination.
+4. **Contradiction & Specimen Mismatch Guard (Module 8):** Checks whether incoming evidence aligns with counterfactual trajectories. Detects both **adversarial contradiction** (e.g., uploading a healthy leaf into a diseased case) and **specimen mismatch** (e.g., uploading a Septoria leaf into an Early Blight diagnosis where Septoria was ruled out). Quarantines foreign evidence and dampens confidence to safeguard clinical integrity.
 5. **Adaptive Bayesian Stopping:** Halts sequential inquiry the moment uncertainty is resolved (Shannon entropy $H(P) \le 0.35\text{ bits}$ and margin $\Delta p \ge 0.40$).
 
 ---
@@ -89,13 +89,17 @@ Open your browser at: **`http://localhost:8501`**
   - *Direct Leaf Upload:* Upload photographic evidence (lesion close-up, leaf underside, stem view).
   - *One-Click Weather:* Quick field microclimate buttons (Warm & Dry, Cool & Wet, Humid, Sunny).
   - *Visual Symptoms:* Plain-language observation tags without textbook botanical jargon.
-- **Audit Trail & Adaptive Certification:** Dynamic clinical summary reflecting verified, provisional, gated, or contradicted diagnostic outcomes.
+- **Audit Trail & Adaptive Certification:** Dynamic clinical outcome certificates:
+  - 🟢 **Verified Clinical Audit** (Target Folio-Pathology Confirmed, $H \le 0.35\text{ bits}$).
+  - 🔵 **Provisional Audit** (Active Inquiry in Progress, Sub-Threshold Certainty).
+  - 🟡 **Contradiction Detected / Specimen Mismatch Quarantined** (Module 8 Safety Active, posterior preserved).
+  - 🔴 **Optical Filter Gated** (Module 7 Laplacian Blur Filter Active, corrupted images quarantined).
 
 ---
 
 ### Step 3: Run Automated Test Suites
 
-Verify pipeline integrity, blur rejection, and contradiction verification:
+Verify pipeline integrity, blur rejection, contradiction verification, and specimen mismatch guards:
 
 ```bash
 python tests/test_website_workflow.py
@@ -129,7 +133,7 @@ python scripts/test_scenarios.py
 | **Module 5** | **Counterfactual Planning** | Simulates expected posterior trajectories under competing disease hypotheses. |
 | **Module 6** | **Active Utility Selector** | Computes Net Policy Utility $U(e) = \alpha \cdot D_{JS} + \beta \cdot \text{Exp}(\Delta H) - \lambda \cdot \text{Cost}$. |
 | **Module 7** | **Optical Quality Gating** | Evaluates Laplacian sharpness & luminance; blocks predictions on unreadable images. |
-| **Module 8** | **Contradiction Verification** | Detects adversarial/conflicting evidence; dampens confidence to prevent false lock. |
+| **Module 8** | **Contradiction & Specimen Guard** | Detects conflicting evidence and cross-specimen mismatches; quarantines foreign pathologies. |
 | **Module 9** | **Bayesian Belief Updater** | Updates posterior distributions with reliability weighting ($q$) and penalty scaling ($\rho$). |
 
 ---
@@ -180,7 +184,7 @@ EvidenceGain-X/
 │   ├── models/                  # ResNet-18 encoder and text embedding network
 │   ├── planning/                # Counterfactual trajectory planner
 │   ├── utils/                   # Config and reproducibility helpers
-│   └── verification/            # Module 7 (Optical Gate) & Module 8 (Contradiction Verifier)
+│   └── verification/            # Module 7 (Optical Gate) & Module 8 (Contradiction & Specimen Guard)
 ├── tests/                       # Automated test suite (test_website_workflow.py)
 ├── EvidenceGain_X_Codebase_Manual_and_Defense_Guide.pdf # Comprehensive manual
 ├── README.md                    # Project documentation
